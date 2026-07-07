@@ -1,0 +1,70 @@
+// ============================================================
+// DropLog SO App - Route Completion
+// ============================================================
+
+function showRouteComplete() {
+    const delivered = stopsData.filter(s => s.status === 'delivered' || s.status === 'partial').length;
+    const failed = stopsData.filter(s => s.status === 'failed').length;
+    const endTime = new Date();
+
+    document.getElementById('summaryDelivered').textContent = delivered + '/' + stopsData.length;
+    document.getElementById('summaryFailed').textContent = failed;
+    document.getElementById('summaryStart').textContent = formatTime(routeStartTime);
+    document.getElementById('summaryEnd').textContent = formatTime(endTime);
+
+    const ms = endTime - routeStartTime;
+    document.getElementById('summaryDuration').textContent = 
+        Math.floor(ms / 3600000) + 'h ' + Math.floor((ms % 3600000) / 60000) + 'm';
+
+    showScreen('screenComplete');
+}
+
+async function handleFinish() {
+    // Get final KM and expense from the form
+    var finalKm = document.getElementById('completeFinalKm').value.trim();
+    var expense = document.getElementById('completeExpense').value.trim();
+
+    if (!finalKm) { showToast('Enter final KM reading', 'warning'); return; }
+
+    var finalKmNum = Number(finalKm) || 0;
+    var expenseNum = Number(expense) || 0;
+    var initialKm = routeData.initial_km_reading || 0;
+    var drivenKm = finalKmNum > initialKm ? finalKmNum - initialKm : 0;
+
+    var btn = document.querySelector('#screenComplete .btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }
+
+    var gps = await getGPS();
+    var now = new Date().toISOString();
+
+    await sb.from('routes').update({
+        status: 'completed',
+        completed_at: now,
+        end_gps_lat: gps.lat,
+        end_gps_lng: gps.lng,
+        final_km_reading: finalKmNum,
+        driven_km: drivenKm,
+        so_travelling_expense: expenseNum || null
+    }).eq('id', routeData.id);
+
+    await sb.from('delivery_events').insert({
+        route_id: routeData.id,
+        event_type: 'route_completed',
+        gps_lat: gps.lat,
+        gps_lng: gps.lng,
+        performed_by: currentUser ? currentUser.id : null
+    });
+
+    showToast('Route submitted', 'success');
+
+    // Reset
+    setTimeout(function() {
+        routeData = null;
+        stopsData = [];
+        productsData = {};
+        currentStopIndex = null;
+        routeStartTime = null;
+        document.getElementById('routeInput').value = '';
+        showScreen('screenRoute');
+    }, 1500);
+}

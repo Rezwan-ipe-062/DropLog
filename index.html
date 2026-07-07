@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DropLog - Syngenta</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <link rel="stylesheet" href="css/so.css?v=2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#00457C">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+<!-- Header -->
+<div class="header" id="appHeader" style="display:none;">
+    <div class="header-left">
+        <img src="data:image/png;base64,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" alt="Syngenta" style="height:22px;opacity:0.9;">
+        <span class="header-divider"></span>
+        <span class="header-title">DropLog</span>
+    </div>
+    <span class="so-badge" id="userBadge"></span>
+</div>
+
+<!-- Login Screen -->
+<div class="screen active" id="screenLogin">
+    <div class="login-container">
+        <img src="data:image/png;base64,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" alt="Syngenta" style="height:36px;margin-bottom:20px;">
+        <div class="login-title">DropLog</div>
+        <div class="login-subtitle">Route Delivery Tracking</div>
+        <div class="input-group">
+            <label>Employee ID</label>
+            <input type="text" id="empId" placeholder="e.g. SBL-1042">
+        </div>
+        <div class="input-group">
+            <label>PIN</label>
+            <input type="password" id="empPin" placeholder="4-digit PIN" maxlength="4" inputmode="numeric">
+        </div>
+        <button class="btn-primary" onclick="handleLogin()">Sign In</button>
+    </div>
+</div>
+
+<!-- Route Entry Screen -->
+<div class="screen" id="screenRoute">
+    <div class="route-entry">
+        <h2>Start a Route</h2>
+        <p>Enter the route code from your dispatch sheet.</p>
+        <div class="input-group">
+            <label>Route Code</label>
+            <input type="text" id="routeInput" placeholder="e.g. CTG-LAXI-20260702-41">
+        </div>
+        <button class="btn-primary" onclick="handleStartRoute()">Start Route</button>
+        <div id="routeLoading" class="loading" style="display:none;">Loading route...</div>
+    </div>
+</div>
+
+
+<!-- Route Start Screen (overview + START button) -->
+<div class="screen" id="screenStart">
+    <div class="start-container">
+        <div class="start-card">
+            <h2 id="startRouteName"></h2>
+            <span class="route-meta" id="startRouteCode"></span>
+
+            <div class="start-details">
+                <div class="start-detail-row">
+                    <span class="sd-label">Vehicle</span>
+                    <span class="sd-value" id="startVehicle">--</span>
+                </div>
+                <div class="start-detail-row">
+                    <span class="sd-label">Vendor</span>
+                    <span class="sd-value" id="startVendor">--</span>
+                </div>
+                <div class="start-detail-row">
+                    <span class="sd-label">District</span>
+                    <span class="sd-value" id="startDistrict">--</span>
+                </div>
+                <div class="start-detail-row">
+                    <span class="sd-label">Stops</span>
+                    <span class="sd-value" id="startStopCount">--</span>
+                </div>
+            </div>
+
+            <div class="start-stops-preview" id="startStopPreview"></div>
+        </div>
+
+        <div class="start-inputs">
+            <div class="input-group">
+                <label>Initial KM Reading (odometer)</label>
+                <input type="number" id="startInitialKm" placeholder="e.g. 478400" inputmode="numeric">
+            </div>
+            <div class="input-group">
+                <label>Transit Volume (MT)</label>
+                <input type="number" id="startTransitVolume" placeholder="e.g. 2.5" inputmode="decimal" step="0.1">
+            </div>
+        </div>
+
+        <button class="btn-start" id="btnStartRoute" onclick="handleRouteStart()">START</button>
+        <p class="start-hint">GPS location and timestamp will be captured</p>
+    </div>
+</div>
+
+<!-- Stops List Screen -->
+<div class="screen" id="screenStops">
+    <div class="route-header-card">
+        <div class="rhc-top">
+            <div>
+                <h2 id="routeName"></h2>
+                <span class="route-meta" id="routeCode"></span>
+            </div>
+            <span class="status-chip">In Transit</span>
+        </div>
+        <div class="rhc-row">
+            <div class="rhc-pill"><span class="pill-label">Vehicle</span><span id="routeVehicle">--</span></div>
+            <div class="rhc-pill"><span class="pill-label">Vendor</span><span id="routeVendor">--</span></div>
+        </div>
+        <div class="progress-section">
+            <span class="progress-text"><span id="doneCount">0</span>/<span id="totalStops">0</span> delivered</span>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <span class="progress-label" id="progressLabel">0%</span>
+        </div>
+    </div>
+
+    <div class="section-label">Delivery Stops</div>
+    <ul class="stop-list" id="stopList"></ul>
+
+    <button class="fab-issue" onclick="showIssueScreen()">! Report Issue</button>
+</div>
+
+<!-- Delivery Action Screen -->
+<div class="screen" id="screenDelivery">
+    <button class="back-btn" onclick="showScreen('screenStops')">Back to route</button>
+    <div class="customer-card">
+        <h2 id="deliveryCustomer"></h2>
+        <div class="delivery-address" id="deliveryAddress"></div>
+        <div class="product-list">
+            <h3>Products</h3>
+            <div id="deliveryProducts"></div>
+        </div>
+    </div>
+    <div class="action-section">
+        <button class="btn-delivered" onclick="handleDelivered()">Mark as Delivered</button>
+        <div class="action-row">
+            <button class="btn-partial" onclick="handlePartial()">Partial</button>
+            <button class="btn-failed" onclick="handleFailed()">Failed</button>
+        </div>
+    </div>
+    <div class="remark-box">
+        <label>Remark (optional)</label>
+        <textarea id="deliveryRemark" placeholder="e.g. Left with shop assistant..."></textarea>
+    </div>
+</div>
+
+<!-- Issue Screen -->
+<div class="screen" id="screenIssue">
+    <button class="back-btn" onclick="showScreen('screenStops')">Back to route</button>
+    <h2>Report an Issue</h2>
+    <p class="screen-desc">Warehouse will be alerted immediately.</p>
+    <ul class="issue-list">
+        <li class="issue-option" onclick="selectIssue(this)">Vehicle breakdown</li>
+        <li class="issue-option" onclick="selectIssue(this)">Road blocked or flooded</li>
+        <li class="issue-option" onclick="selectIssue(this)">Accident</li>
+        <li class="issue-option" onclick="selectIssue(this)">Customer dispute</li>
+        <li class="issue-option" onclick="selectIssue(this)">Product damage in transit</li>
+        <li class="issue-option" onclick="selectIssue(this)">Other</li>
+    </ul>
+    <div class="remark-box">
+        <label>Details</label>
+        <textarea id="issueDetails" placeholder="Describe briefly..."></textarea>
+    </div>
+    <button class="btn-alert" onclick="handleIssueSubmit()">Send Alert</button>
+</div>
+
+<!-- Route Complete Screen -->
+<div class="screen" id="screenComplete">
+    <div class="complete-container">
+        <div class="complete-icon">OK</div>
+        <h2>Route Complete</h2>
+        <p class="screen-desc">Summary saved.</p>
+        <div class="summary-card">
+            <div class="summary-row"><span>Delivered</span><span class="green" id="summaryDelivered">0</span></div>
+            <div class="summary-row"><span>Failed</span><span class="red" id="summaryFailed">0</span></div>
+            <div class="summary-row"><span>Start</span><span id="summaryStart">--</span></div>
+            <div class="summary-row"><span>End</span><span id="summaryEnd">--</span></div>
+            <div class="summary-row"><span>Duration</span><span id="summaryDuration">--</span></div>
+        </div>
+        <div class="complete-inputs">
+            <div class="input-group">
+                <label>Final KM Reading (odometer)</label>
+                <input type="number" id="completeFinalKm" placeholder="e.g. 478796" inputmode="numeric">
+            </div>
+            <div class="input-group">
+                <label>SO Travelling Expense (BDT)</label>
+                <input type="number" id="completeExpense" placeholder="e.g. 500" inputmode="numeric">
+            </div>
+        </div>
+        <button class="btn-primary" onclick="handleFinish()">Submit and Finish</button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/gps.js"></script>
+<script src="js/route.js"></script>
+<script src="js/delivery.js"></script>
+<script src="js/issue.js"></script>
+<script src="js/complete.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+}
+</script>
+</body>
+</html>

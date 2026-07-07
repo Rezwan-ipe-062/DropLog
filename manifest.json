@@ -1,0 +1,18 @@
+{
+    "name": "DropLog - Syngenta",
+    "short_name": "DropLog",
+    "description": "Route Delivery Tracking - Syngenta Bangladesh",
+    "start_url": ".",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f4f5f7",
+    "theme_color": "#00457C",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
