@@ -190,7 +190,7 @@ async function generateRouteReport(routeId) {
     fullRow('Route Sales Value', '');
     fullRow('Others Region Sales', '');
     fullRow('Transit Volume (MT)', route.transit_volume_mt ? route.transit_volume_mt + ' MT' : '--');
-    fullRow('Vehicle Capacity (MT)', '');
+    fullRow('Vehicle Capacity (MT)', route.vehicle_capacity_mt ? route.vehicle_capacity_mt + ' MT' : '--');
     fullRow('SO Travelling Expense', route.so_travelling_expense ? 'BDT ' + route.so_travelling_expense : '--');
     fullRow('Carrying Cost', '');
     fullRow('Loading/Unloading Cost', '');

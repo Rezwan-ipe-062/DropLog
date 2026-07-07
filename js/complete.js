@@ -28,8 +28,15 @@ async function handleFinish() {
 
     var finalKmNum = Number(finalKm) || 0;
     var expenseNum = Number(expense) || 0;
-    var initialKm = routeData.initial_km_reading || 0;
-    var drivenKm = finalKmNum > initialKm ? finalKmNum - initialKm : 0;
+
+    // Fetch fresh route data to get initial_km (in case local is stale)
+    var freshRoute = routeData;
+    if (sb) {
+        var { data: fr } = await sb.from('routes').select('initial_km_reading').eq('id', routeData.id).single();
+        if (fr) freshRoute = fr;
+    }
+    var initialKm = freshRoute.initial_km_reading || 0;
+    var drivenKm = (initialKm > 0 && finalKmNum > initialKm) ? finalKmNum - initialKm : 0;
 
     var btn = document.querySelector('#screenComplete .btn-primary');
     if (btn) { btn.disabled = true; btn.textContent = 'Submitting...'; }

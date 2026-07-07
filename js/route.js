@@ -83,6 +83,13 @@ function renderStartScreen() {
 }
 
 async function handleRouteStart() {
+    // Validate required fields
+    var initialKm = document.getElementById('startInitialKm').value.trim();
+    var transitVolume = document.getElementById('startTransitVolume').value.trim();
+    var vehicleCapacity = document.getElementById('startVehicleCapacity').value.trim();
+
+    if (!initialKm) { showToast('Enter initial KM reading', 'warning'); return; }
+
     var btn = document.getElementById('btnStartRoute');
     btn.disabled = true;
     btn.textContent = 'Starting...';
@@ -94,7 +101,10 @@ async function handleRouteStart() {
         status: 'in_transit',
         started_at: routeStartTime.toISOString(),
         start_gps_lat: gps.lat,
-        start_gps_lng: gps.lng
+        start_gps_lng: gps.lng,
+        initial_km_reading: Number(initialKm) || null,
+        transit_volume_mt: Number(transitVolume) || null,
+        vehicle_capacity_mt: Number(vehicleCapacity) || null
     }).eq('id', routeData.id);
 
     // Log event
@@ -105,6 +115,13 @@ async function handleRouteStart() {
         gps_lng: gps.lng,
         performed_by: currentUser ? currentUser.id : null
     });
+
+    // Update local routeData with the values we just saved
+    routeData.initial_km_reading = Number(initialKm) || null;
+    routeData.transit_volume_mt = Number(transitVolume) || null;
+    routeData.vehicle_capacity_mt = Number(vehicleCapacity) || null;
+    routeData.status = 'in_transit';
+    routeData.started_at = routeStartTime.toISOString();
 
     btn.disabled = false;
     btn.textContent = 'START';
