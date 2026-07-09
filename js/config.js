@@ -63,6 +63,16 @@ function showScreen(id) {
     // GPS breadcrumb trail map lifecycle
     if (id === 'screenStops') {
         setTimeout(initRouteMap, 100);
+        // Retry in case Leaflet JS hasn't loaded yet
+        if (typeof L === 'undefined') {
+            var _retryMap = setInterval(function() {
+                if (typeof L !== 'undefined') {
+                    clearInterval(_retryMap);
+                    initRouteMap();
+                }
+            }, 500);
+            setTimeout(function() { clearInterval(_retryMap); }, 10000);
+        }
     } else {
         destroyRouteMap();
     }

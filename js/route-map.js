@@ -1,5 +1,4 @@
 let routeMap = null;
-let mapInitialized = false;
 let trailPolyline = null;
 let stopMarkers = [];
 let currentPosMarker = null;
@@ -7,15 +6,15 @@ let gpsWatchId = null;
 
 function initRouteMap() {
     const container = document.getElementById('routeMap');
-    if (!container) return;
+    if (!container) { console.log('routeMap: no container'); return; }
+    if (typeof L === 'undefined') { console.log('routeMap: Leaflet not loaded'); return; }
 
+    // If map already exists, just resize and refresh
     if (routeMap) {
         routeMap.invalidateSize();
-        updateRouteMap();
+        renderMapMarkers();
         return;
     }
-
-    if (typeof L === 'undefined') return;
 
     routeMap = L.map(container, {
         zoomControl: false,
@@ -27,59 +26,38 @@ function initRouteMap() {
         maxZoom: 18
     }).addTo(routeMap);
 
-    routeMap.on('load', function() {
-        mapInitialized = true;
-        updateRouteMap();
-    });
+    // Markers and trail right away on first render
+    renderMapMarkers();
 
-    // Watch GPS position
-    if (navigator.geolocation) {
-        gpsWatchId = navigator.geolocation.watchPosition(function(pos) {
-            const latlng = [pos.coords.latitude, pos.coords.longitude];
-            if (!currentPosMarker) {
-                currentPosMarker = L.circleMarker(latlng, {
-                    radius: 8,
-                    color: '#2196F3',
-                    fillColor: '#2196F3',
-                    fillOpacity: 0.8,
-                    weight: 2
-                }).addTo(routeMap);
-                currentPosMarker.bindPopup('You are here');
-            } else {
-                currentPosMarker.setLatLng(latlng);
-            }
-        }, function() {}, { enableHighAccuracy: true, timeout: 15000 });
-    }
+    // Start GPS watch
+    startGpsWatch();
 }
 
-function updateRouteMap() {
-    if (!routeMap || !mapInitialized) return;
-    if (!stopsData || stopsData.length === 0) return;
+function renderMapMarkers() {
+    if (!routeMap) return;
+    if (!stopsData || stopsData.length === 0) { console.log('routeMap: no stopsData'); return; }
 
     // Clear old markers
     stopMarkers.forEach(m => routeMap.removeLayer(m));
     stopMarkers = [];
+    if (trailPolyline) routeMap.removeLayer(trailPolyline);
+    trailPolyline = null;
 
     const trailPoints = [];
     const allPoints = [];
 
     stopsData.forEach(function(stop, i) {
-        if (!stop.gps_lat || !stop.gps_lng) return;
-        const latlng = [stop.gps_lat, stop.gps_lng];
+        const lat = parseFloat(stop.gps_lat);
+        const lng = parseFloat(stop.gps_lng);
+        if (!lat || !lng) return;
+        const latlng = [lat, lng];
         allPoints.push(latlng);
 
-        var markerColor, markerIcon;
-        if (stop.status === 'delivered') {
-            markerColor = '#00A94F';
-            trailPoints.push(latlng);
-        } else if (stop.status === 'partial') {
-            markerColor = '#E65100';
-            trailPoints.push(latlng);
-        } else if (stop.status === 'failed') {
-            markerColor = '#B71C1C';
-        } else {
-            markerColor = '#90A4AE';
-        }
+        var markerColor;
+        if (stop.status === 'delivered') { markerColor = '#00A94F'; trailPoints.push(latlng); }
+        else if (stop.status === 'partial') { markerColor = '#E65100'; trailPoints.push(latlng); }
+        else if (stop.status === 'failed') { markerColor = '#B71C1C'; }
+        else { markerColor = '#90A4AE'; }
 
         const marker = L.circleMarker(latlng, {
             radius: stop.status === 'pending' ? 7 : 6,
@@ -96,31 +74,51 @@ function updateRouteMap() {
         stopMarkers.push(marker);
     });
 
-    // Update trail polyline
-    if (trailPolyline) routeMap.removeLayer(trailPolyline);
+    // Trail polyline connecting delivered/partial stops
     if (trailPoints.length >= 2) {
         trailPolyline = L.polyline(trailPoints, {
-            color: '#00A94F',
-            weight: 3,
-            opacity: 0.7,
-            dashArray: '8, 6'
+            color: '#00A94F', weight: 3, opacity: 0.7, dashArray: '8, 6'
         }).addTo(routeMap);
     }
 
-    // Fit bounds to show all points + current position
-    const all = allPoints.slice();
-    if (currentPosMarker) all.push(currentPosMarker.getLatLng());
-    if (all.length > 0) {
-        routeMap.fitBounds(all.length === 1
-            ? [all[0], [all[0][0] + 0.01, all[0][1] + 0.01]]
-            : all, { padding: [30, 30], maxZoom: 15 });
+    // Fit bounds
+    if (currentPosMarker) allPoints.push(currentPosMarker.getLatLng());
+    if (allPoints.length > 0) {
+        routeMap.fitBounds(allPoints.length === 1
+            ? [allPoints[0], [allPoints[0][0] + 0.01, allPoints[0][1] + 0.01]]
+            : allPoints, { padding: [30, 30], maxZoom: 15 });
     }
 }
 
+function startGpsWatch() {
+    if (gpsWatchId !== null) return;
+    if (!navigator.geolocation) return;
+
+    gpsWatchId = navigator.geolocation.watchPosition(function(pos) {
+        const latlng = [pos.coords.latitude, pos.coords.longitude];
+        if (!currentPosMarker) {
+            currentPosMarker = L.circleMarker(latlng, {
+                radius: 8, color: '#2196F3', fillColor: '#2196F3',
+                fillOpacity: 0.8, weight: 2
+            }).addTo(routeMap);
+            currentPosMarker.bindPopup('You are here');
+        } else {
+            currentPosMarker.setLatLng(latlng);
+        }
+    }, function(err) {
+        console.log('GPS watch error:', err.message);
+    }, { enableHighAccuracy: true, timeout: 15000 });
+}
+
 function destroyRouteMap() {
-    if (gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
-    if (routeMap) { routeMap.remove(); routeMap = null; }
-    mapInitialized = false;
+    if (gpsWatchId !== null) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+        gpsWatchId = null;
+    }
+    if (routeMap) {
+        routeMap.remove();
+        routeMap = null;
+    }
     stopMarkers = [];
     trailPolyline = null;
     currentPosMarker = null;
