@@ -47,14 +47,33 @@ function formatTime(d) {
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+let _backNav = false;
+
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     var header = document.getElementById('appHeader');
     header.style.display = (id === 'screenLogin') ? 'none' : 'block';
     window.scrollTo(0, 0);
+
+    // Push history so hardware back navigates in-app instead of leaving
+    if (!_backNav && id !== 'screenLogin') history.pushState({ screen: id }, '');
+    _backNav = false;
+
     if (id !== 'screenStops') {
         var btn = document.getElementById('btnSaveOrder');
         if (btn) { btn.style.display = 'none'; btn.textContent = 'Save Stop Order'; btn.disabled = false; }
     }
 }
+
+// Handle hardware/device back button
+window.addEventListener('popstate', function(e) {
+    if (e.state && e.state.screen) {
+        _backNav = true;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(e.state.screen).classList.add('active');
+        var header = document.getElementById('appHeader');
+        header.style.display = 'block';
+        window.scrollTo(0, 0);
+    }
+});
