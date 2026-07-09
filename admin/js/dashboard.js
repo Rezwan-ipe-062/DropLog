@@ -184,7 +184,7 @@ async function loadIssueRoutes() {
         tbody.innerHTML = data.map(issue => {
             const r = issue.routes || {};
             const ackLabel = issue.acknowledged ? '<span class="status-badge status-completed">Dismissed</span>' : '<span class="status-badge status-pending">Open</span>';
-            return '<tr style="cursor:pointer;">' +
+            return '<tr onclick="viewRouteDetail(\'' + issue.route_id + '\')" style="cursor:pointer;">' +
                 '<td><strong>' + escapeHtml(r.route_code || '?') + '</strong></td>' +
                 '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
                 '<td>' + escapeHtml(r.district || '-') + '</td>' +
