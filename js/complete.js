@@ -22,6 +22,8 @@ function showRouteComplete() {
 async function handleFinish() {
     try {
         // Get final KM and expense from the form
+        if (!confirm('Submit route as complete?')) return;
+
         var finalKm = document.getElementById('completeFinalKm').value.trim();
         var expense = document.getElementById('completeExpense').value.trim();
 

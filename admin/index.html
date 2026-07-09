@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,20 +35,43 @@
         </div>
         <div class="header-right">
             <span class="admin-name" id="adminName"></span>
+            <button class="btn-theme" onclick="toggleTheme()" title="Toggle dark mode" id="themeBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
             <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
         </div>
     </div>
 
     <!-- Navigation -->
     <nav class="nav-tabs">
-        <button class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</button>
-        <button class="nav-tab" onclick="switchTab('route-builder')">Route Builder</button>
-        <button class="nav-tab" onclick="switchTab('upload')">Upload Data</button>
-        <button class="nav-tab" onclick="switchTab('contacts')">Contacts</button>
-        <button class="nav-tab" onclick="switchTab('users')">Supply Officers</button>
-        <button class="nav-tab" onclick="switchTab('search')">Search</button>
-        <button class="nav-tab" onclick="switchTab('notifications')">Notifications</button>
-        <button class="nav-tab" onclick="switchTab('fleet')">Fleet</button>
+        <button class="nav-tab active" onclick="switchTab('dashboard')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard
+        </button>
+        <button class="nav-tab" onclick="switchTab('route-builder')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Route Builder
+        </button>
+        <button class="nav-tab" onclick="switchTab('upload')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload Data
+        </button>
+        <button class="nav-tab" onclick="switchTab('contacts')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Contacts
+        </button>
+        <button class="nav-tab" onclick="switchTab('users')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Supply Officers
+        </button>
+        <button class="nav-tab" onclick="switchTab('search')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search
+        </button>
+        <button class="nav-tab" onclick="switchTab('notifications')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notifications
+        </button>
     </nav>
 
     <!-- Content Area -->
@@ -154,6 +177,11 @@
             <div class="card">
                 <h3>Search</h3>
                 <input type="text" class="search-input" placeholder="Search by GD number, customer name, DO, location..." oninput="handleSearch(this.value)">
+                <div class="search-filters" id="searchFilters">
+                    <span class="sf-chip active" data-filter="all" onclick="setSearchFilter('all')">All</span>
+                    <span class="sf-chip" data-filter="stops" onclick="setSearchFilter('stops')">Customers</span>
+                    <span class="sf-chip" data-filter="gds" onclick="setSearchFilter('gds')">GDs</span>
+                </div>
                 <div id="searchResults"></div>
             </div>
         </div>
@@ -168,6 +196,11 @@
                     <input type="tel" id="fvPhone" placeholder="Driver Phone" style="width:130px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
                     <input type="number" id="fvCapacity" placeholder="Capacity (kg)" style="width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
                     <button class="btn-small" onclick="addVehicle()">+ Add Vehicle</button>
+                </div>
+                <div class="search-filters" style="margin-bottom:12px;">
+                    <span class="sf-chip active" data-filter="all" onclick="setFleetFilter('all')">All</span>
+                    <span class="sf-chip" data-filter="active" onclick="setFleetFilter('active')">Active</span>
+                    <span class="sf-chip" data-filter="inactive" onclick="setFleetFilter('inactive')">Inactive</span>
                 </div>
                 <table>
                     <thead><tr><th>Vehicle</th><th>Driver</th><th>Phone</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
@@ -243,6 +276,18 @@ function switchTab(tabName) {
         stopDashboardPolling();
     }
 }
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    localStorage.setItem('droplog_admin_theme', isDark ? 'light' : 'dark');
+}
+// Restore saved theme
+(function() {
+    const saved = localStorage.getItem('droplog_admin_theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
 </script>
 
 </body>

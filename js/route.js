@@ -152,6 +152,9 @@ function renderRouteScreen() {
     document.getElementById('routeVendor').textContent = routeData.vendor_name || '--';
     document.getElementById('totalStops').textContent = stopsData.length;
 
+    const chip = document.getElementById('statusChip');
+    if (chip) chip.textContent = routeData.status === 'in_transit' ? 'In Transit' : routeData.status || 'In Transit';
+
     renderStopList();
 }
 

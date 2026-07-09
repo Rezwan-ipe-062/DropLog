@@ -55,7 +55,7 @@
             <input type="text" id="routeInput" placeholder="e.g. CTG-LAXI-20260702-41">
         </div>
         <button class="btn-primary" onclick="handleStartRoute()">Start Route</button>
-        <div id="routeLoading" class="loading" style="display:none;">Loading route...</div>
+        <div id="routeLoading" class="loading" style="display:none;"><div class="spinner"></div> Loading route...</div>
     </div>
 </div>
 
@@ -117,7 +117,7 @@
                 <h2 id="routeName"></h2>
                 <span class="route-meta" id="routeCode"></span>
             </div>
-            <span class="status-chip">In Transit</span>
+            <span class="status-chip" id="statusChip">In Transit</span>
         </div>
         <div class="rhc-row">
             <div class="rhc-pill"><span class="pill-label">Vehicle</span><span id="routeVehicle">--</span></div>
@@ -147,16 +147,16 @@
             <div id="deliveryProducts"></div>
         </div>
     </div>
+    <div class="remark-box">
+        <label>Remark (optional)</label>
+        <textarea id="deliveryRemark" placeholder="e.g. Left with shop assistant..."></textarea>
+    </div>
     <div class="action-section">
         <button class="btn-delivered" onclick="handleDelivered()">Mark as Delivered</button>
         <div class="action-row">
             <button class="btn-partial" onclick="handlePartial()">Partial</button>
             <button class="btn-failed" onclick="handleFailed()">Failed</button>
         </div>
-    </div>
-    <div class="remark-box">
-        <label>Remark (optional)</label>
-        <textarea id="deliveryRemark" placeholder="e.g. Left with shop assistant..."></textarea>
     </div>
 </div>
 

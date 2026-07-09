@@ -3,14 +3,21 @@
 // ============================================================
 // Handles: vehicle/driver registration, listing, deletion
 
+let fleetFilter = 'all';
+
+function setFleetFilter(filter) {
+    fleetFilter = filter;
+    document.querySelectorAll('#panel-fleet .sf-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === filter));
+    loadVehicles();
+}
+
 async function loadVehicles() {
     if (!sb) return;
 
-    const { data } = await sb
-        .from('fleet_vehicles')
-        .select('*')
-        .eq('warehouse_code', getWarehouseCode())
-        .order('created_at', { ascending: false });
+    let query = sb.from('fleet_vehicles').select('*').eq('warehouse_code', getWarehouseCode());
+    if (fleetFilter === 'active') query = query.eq('is_active', true);
+    if (fleetFilter === 'inactive') query = query.eq('is_active', false);
+    const { data } = await query.order('created_at', { ascending: false });
 
     const tbody = document.getElementById('fleetBody');
     const empty = document.getElementById('noFleet');

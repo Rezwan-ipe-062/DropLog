@@ -37,7 +37,8 @@ function showToast(msg, type) {
     t.textContent = msg;
     t.className = 'toast ' + (type || 'info') + ' show';
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => t.classList.remove('show'), 2500);
+    const duration = type === 'error' ? 5000 : 2500;
+    showToast._t = setTimeout(() => t.classList.remove('show'), duration);
 }
 
 function formatTime(d) {

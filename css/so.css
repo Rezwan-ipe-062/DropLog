@@ -122,7 +122,9 @@ body {
 .route-entry { padding-top: 24px; }
 .route-entry h2 { font-size: 20px; margin-bottom: 4px; }
 .route-entry p { color: var(--gray-500); font-size: 14px; margin-bottom: 24px; }
-.loading { font-size: 14px; color: var(--gray-500); margin-top: 12px; }
+.loading { font-size: 14px; color: var(--gray-500); margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+.spinner { width: 18px; height: 18px; border: 2.5px solid var(--gray-300); border-top-color: var(--syn-blue); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Route Header Card */
 .route-header-card {

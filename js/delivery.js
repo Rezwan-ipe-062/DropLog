@@ -29,12 +29,12 @@ function openDelivery(index) {
 async function handleDelivered() {
     try {
         if (currentStopIndex === null || isProcessing) return;
+        const stop = stopsData[currentStopIndex];
+        if (!confirm('Mark ' + stop.customer_name + ' as delivered?')) return;
         isProcessing = true;
 
         document.querySelector('.btn-delivered').disabled = true;
         document.querySelector('.btn-delivered').textContent = 'Saving...';
-
-        const stop = stopsData[currentStopIndex];
         const gps = await getGPS();
         const now = new Date().toISOString();
         const remark = document.getElementById('deliveryRemark').value.trim();
@@ -91,9 +91,10 @@ async function handleDelivered() {
 async function handlePartial() {
     try {
         if (currentStopIndex === null || isProcessing) return;
+        const stop = stopsData[currentStopIndex];
+        if (!confirm('Mark ' + stop.customer_name + ' as partial?')) return;
         isProcessing = true;
 
-        const stop = stopsData[currentStopIndex];
         const gps = await getGPS();
         const now = new Date().toISOString();
         const remark = document.getElementById('deliveryRemark').value.trim();
@@ -140,8 +141,9 @@ async function handleFailed() {
         const remark = document.getElementById('deliveryRemark').value.trim();
         if (!remark) { showToast('Add a remark for failed delivery', 'warning'); document.getElementById('deliveryRemark').focus(); return; }
 
+        const stop = stopsData[currentStopIndex];
+        if (!confirm('Mark ' + stop.customer_name + ' as failed?')) { isProcessing = false; return; }
         isProcessing = true;
-    const stop = stopsData[currentStopIndex];
     const gps = await getGPS();
     const now = new Date().toISOString();
 

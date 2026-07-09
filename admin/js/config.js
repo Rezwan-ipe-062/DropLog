@@ -77,7 +77,8 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     toast.className = 'toast ' + type + ' show';
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => toast.classList.remove('show'), 3000);
+    const duration = type === 'error' ? 5000 : 3000;
+    showToast._t = setTimeout(() => toast.classList.remove('show'), duration);
 }
 
 function formatDate(dateStr) {

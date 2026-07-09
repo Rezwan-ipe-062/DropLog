@@ -19,6 +19,7 @@ function selectIssue(el) {
 async function handleIssueSubmit() {
     try {
         if (!selectedIssueType) { showToast('Select issue type', 'warning'); return; }
+        if (!confirm('Send "' + selectedIssueType + '" alert to warehouse?')) return;
 
         const details = document.getElementById('issueDetails').value.trim();
         const gps = await getGPS();
