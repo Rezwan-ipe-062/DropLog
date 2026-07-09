@@ -320,6 +320,7 @@ async function createRoute() {
             .insert({
                 route_code: routeCode,
                 route_name: routeName || (districts.join('+') + ' Route'),
+                status: 'pending',
                 assigned_so_id: soId || null,
                 vehicle_number: vehicle,
                 vehicle_type: vehicleType,
