@@ -326,7 +326,7 @@ async function createRoute() {
                 vehicle_type: vehicleType,
                 vendor_name: vendor,
                 dispatch_date: dispatchDate,
-                plant_name: selGDs[0].plant_name,
+                plant_name: getWarehouseName(),
                 district: districts.join(', '),
                 group_delivery_numbers: Array.from(selectedGDs),
                 total_stops: allStops.length,
