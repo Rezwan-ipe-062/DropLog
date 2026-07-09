@@ -1,5 +1,5 @@
 // ============================================================
-// DropLog SO App - Delivery Actions v2
+// DropLog SO App - Delivery Actions
 // ============================================================
 let currentStopIndex = null;
 let isProcessing = false;
@@ -16,120 +16,131 @@ function openDelivery(index) {
     document.getElementById('deliveryAddress').textContent = stop.address || '';
     document.getElementById('deliveryRemark').value = '';
 
+    // Render products
     const prods = productsData[stop.id] || [];
-    document.getElementById('deliveryProducts').innerHTML = prods.map(p =>
-        '<div class="product-item"><span class="p-name">' + (p.material_description || '') +
-        '</span><span class="p-qty">' + (p.quantity || 0) + ' ' + (p.unit || 'GEB') + '</span></div>'
+    document.getElementById('deliveryProducts').innerHTML = prods.map(p => 
+        '<div class="product-item"><span class="p-name">' + escapeHtml(p.material_description || '') + 
+        '</span><span class="p-qty">' + (p.quantity || 0) + ' ' + escapeHtml(p.unit || 'GEB') + '</span></div>'
     ).join('');
 
     showScreen('screenDelivery');
 }
 
 async function handleDelivered() {
-    if (currentStopIndex === null || isProcessing) return;
-    if (!confirm('Mark this stop as delivered?')) return;
+    try {
+        if (currentStopIndex === null || isProcessing) return;
+        isProcessing = true;
 
-    isProcessing = true;
-    const btn = document.querySelector('.btn-delivered');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
+        document.querySelector('.btn-delivered').disabled = true;
+        document.querySelector('.btn-delivered').textContent = 'Saving...';
 
-    const stop = stopsData[currentStopIndex];
-    const gps = await getGPS();
-    const now = new Date().toISOString();
-    const remark = document.getElementById('deliveryRemark').value.trim();
+        const stop = stopsData[currentStopIndex];
+        const gps = await getGPS();
+        const now = new Date().toISOString();
+        const remark = document.getElementById('deliveryRemark').value.trim();
 
-    const { error } = await sb.from('route_stops').update({
-        status: 'delivered',
-        delivered_at: now,
-        gps_lat: gps.lat,
-        gps_lng: gps.lng,
-        remark: remark || null
-    }).eq('id', stop.id);
+        const { error } = await sb.from('route_stops').update({
+            status: 'delivered',
+            delivered_at: now,
+            gps_lat: gps.lat,
+            gps_lng: gps.lng,
+            remark: remark || null
+        }).eq('id', stop.id);
 
-    if (error) {
-        showToast('Save failed', 'error');
+        if (error) {
+            showToast('Save failed', 'error');
+            isProcessing = false;
+            document.querySelector('.btn-delivered').disabled = false;
+            document.querySelector('.btn-delivered').textContent = 'Mark as Delivered';
+            return;
+        }
+
+        // Log event
+        await sb.from('delivery_events').insert({
+            route_id: routeData.id,
+            route_stop_id: stop.id,
+            event_type: 'delivery_confirmed',
+            gps_lat: gps.lat,
+            gps_lng: gps.lng,
+            remark: remark || null,
+            performed_by: currentUser ? currentUser.id : null
+        });
+
+        // Update route progress
+        await sb.from('routes').update({
+            completed_stops: (routeData.completed_stops || 0) + 1
+        }).eq('id', routeData.id);
+        routeData.completed_stops = (routeData.completed_stops || 0) + 1;
+
+        // Update local state
+        stop.status = 'delivered';
+        stop.delivered_at = now;
+
+        showToast(stop.customer_name + ' - delivered', 'success');
+        document.querySelector('.btn-delivered').disabled = false;
+        document.querySelector('.btn-delivered').textContent = 'Mark as Delivered';
+        renderStopList();
+        showScreen('screenStops');
         isProcessing = false;
-        btn.disabled = false;
-        btn.textContent = 'Mark as Delivered';
-        return;
+    } catch (e) {
+        console.error('handleDelivered:', e);
+        showToast(e.message || 'Something went wrong', 'error');
     }
-
-    await sb.from('delivery_events').insert({
-        route_id: routeData.id,
-        route_stop_id: stop.id,
-        event_type: 'delivery_confirmed',
-        gps_lat: gps.lat,
-        gps_lng: gps.lng,
-        remark: remark || null,
-        performed_by: currentUser ? currentUser.id : null
-    });
-
-    await sb.from('routes').update({
-        completed_stops: (routeData.completed_stops || 0) + 1
-    }).eq('id', routeData.id);
-    routeData.completed_stops = (routeData.completed_stops || 0) + 1;
-
-    stop.status = 'delivered';
-    stop.delivered_at = now;
-
-    showToast(stop.customer_name + ' - delivered', 'success');
-    btn.disabled = false;
-    btn.textContent = 'Mark as Delivered';
-    renderStopList();
-    showScreen('screenStops');
-    isProcessing = false;
 }
 
 async function handlePartial() {
-    if (currentStopIndex === null || isProcessing) return;
-    if (!confirm('Mark as partial delivery?')) return;
+    try {
+        if (currentStopIndex === null || isProcessing) return;
+        isProcessing = true;
 
-    isProcessing = true;
-    const stop = stopsData[currentStopIndex];
-    const gps = await getGPS();
-    const now = new Date().toISOString();
-    const remark = document.getElementById('deliveryRemark').value.trim();
+        const stop = stopsData[currentStopIndex];
+        const gps = await getGPS();
+        const now = new Date().toISOString();
+        const remark = document.getElementById('deliveryRemark').value.trim();
 
-    await sb.from('route_stops').update({
-        status: 'partial',
-        delivered_at: now,
-        gps_lat: gps.lat,
-        gps_lng: gps.lng,
-        remark: remark || 'Partial delivery'
-    }).eq('id', stop.id);
+        await sb.from('route_stops').update({
+            status: 'partial',
+            delivered_at: now,
+            gps_lat: gps.lat,
+            gps_lng: gps.lng,
+            remark: remark || 'Partial delivery'
+        }).eq('id', stop.id);
 
-    await sb.from('delivery_events').insert({
-        route_id: routeData.id,
-        route_stop_id: stop.id,
-        event_type: 'delivery_partial',
-        gps_lat: gps.lat,
-        gps_lng: gps.lng,
-        remark: remark || 'Partial delivery',
-        performed_by: currentUser ? currentUser.id : null
-    });
+        await sb.from('delivery_events').insert({
+            route_id: routeData.id,
+            route_stop_id: stop.id,
+            event_type: 'delivery_partial',
+            gps_lat: gps.lat,
+            gps_lng: gps.lng,
+            remark: remark || 'Partial delivery',
+            performed_by: currentUser ? currentUser.id : null
+        });
 
-    await sb.from('routes').update({
-        completed_stops: (routeData.completed_stops || 0) + 1
-    }).eq('id', routeData.id);
-    routeData.completed_stops = (routeData.completed_stops || 0) + 1;
+        await sb.from('routes').update({
+            completed_stops: (routeData.completed_stops || 0) + 1
+        }).eq('id', routeData.id);
+        routeData.completed_stops = (routeData.completed_stops || 0) + 1;
 
-    stop.status = 'partial';
-    stop.delivered_at = now;
+        stop.status = 'partial';
+        stop.delivered_at = now;
 
-    showToast(stop.customer_name + ' - partial', 'warning');
-    renderStopList();
-    showScreen('screenStops');
-    isProcessing = false;
+        showToast(stop.customer_name + ' - partial', 'warning');
+        renderStopList();
+        showScreen('screenStops');
+        isProcessing = false;
+    } catch (e) {
+        console.error('handlePartial:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }
 
 async function handleFailed() {
-    if (currentStopIndex === null || isProcessing) return;
-    const remark = document.getElementById('deliveryRemark').value.trim();
-    if (!remark) { showToast('Add a remark for failed delivery', 'warning'); document.getElementById('deliveryRemark').focus(); return; }
-    if (!confirm('Mark as failed? Reason: ' + remark)) return;
+    try {
+        if (currentStopIndex === null || isProcessing) return;
+        const remark = document.getElementById('deliveryRemark').value.trim();
+        if (!remark) { showToast('Add a remark for failed delivery', 'warning'); document.getElementById('deliveryRemark').focus(); return; }
 
-    isProcessing = true;
+        isProcessing = true;
     const stop = stopsData[currentStopIndex];
     const gps = await getGPS();
     const now = new Date().toISOString();
@@ -164,9 +175,8 @@ async function handleFailed() {
     renderStopList();
     showScreen('screenStops');
     isProcessing = false;
-}
-
-function backToStops() {
-    currentStopIndex = null;
-    showScreen('screenStops');
+    } catch (e) {
+        console.error('handleFailed:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }

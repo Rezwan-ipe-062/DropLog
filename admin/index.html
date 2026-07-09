@@ -55,6 +55,7 @@
         <button class="nav-tab" onclick="switchTab('users')">Supply Officers</button>
         <button class="nav-tab" onclick="switchTab('search')">Search</button>
         <button class="nav-tab" onclick="switchTab('notifications')">Notifications</button>
+        <button class="nav-tab" onclick="switchTab('fleet')">Fleet</button>
     </nav>
 
     <!-- Content Area -->
@@ -148,7 +149,7 @@
                     <button class="btn-small" onclick="addUser()">+ Add SO</button>
                 </div>
                 <table>
-                    <thead><tr><th>Name</th><th>Employee ID</th><th>PIN</th><th>Warehouse</th><th>Phone</th><th></th></tr></thead>
+                    <thead><tr><th>Name</th><th>Employee ID</th><th>Warehouse</th><th>Phone</th><th></th></tr></thead>
                     <tbody id="usersBody"></tbody>
                 </table>
                 <p id="noUsers" class="empty-text">No Supply Officers yet.</p>
@@ -161,6 +162,25 @@
                 <h3>Search</h3>
                 <input type="text" class="search-input" placeholder="Search by GD number, customer name, DO, location..." oninput="handleSearch(this.value)">
                 <div id="searchResults"></div>
+            </div>
+        </div>
+
+        <!-- Fleet Panel -->
+        <div class="panel" id="panel-fleet">
+            <div class="card">
+                <h3>Fleet Management</h3>
+                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                    <input type="text" id="fvVehicle" placeholder="Vehicle Number" style="width:160px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="text" id="fvDriver" placeholder="Driver Name" style="flex:1;min-width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="tel" id="fvPhone" placeholder="Driver Phone" style="width:130px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="number" id="fvCapacity" placeholder="Capacity (kg)" style="width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <button class="btn-small" onclick="addVehicle()">+ Add Vehicle</button>
+                </div>
+                <table>
+                    <thead><tr><th>Vehicle</th><th>Driver</th><th>Phone</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
+                    <tbody id="fleetBody"></tbody>
+                </table>
+                <p id="noFleet" class="empty-text">No vehicles registered.</p>
             </div>
         </div>
 
@@ -200,6 +220,7 @@
 <script src="js/users.js"></script>
 <script src="js/search.js"></script>
 <script src="js/notifications.js"></script>
+<script src="js/fleet.js"></script>
 <script src="js/report.js"></script>
 
 <!-- Tab switching (thin orchestrator) -->
@@ -221,6 +242,7 @@ function switchTab(tabName) {
         case 'contacts': loadContacts(); break;
         case 'users': loadUsers(); break;
         case 'notifications': loadNotifications(); break;
+        case 'fleet': loadVehicles(); break;
     }
 
     // Stop dashboard polling if leaving dashboard

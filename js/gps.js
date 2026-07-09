@@ -1,23 +1,43 @@
 // ============================================================
-// DropLog SO App - GPS Helper v2
+// DropLog SO App - GPS Helper with retry & fallback
 // ============================================================
-function getGPS() {
+let lastKnownGPS = null;
+
+function getGPS({ silent } = {}) {
     return new Promise((resolve) => {
         if (!navigator.geolocation) {
-            resolve({ lat: null, lng: null });
+            if (!silent) showToast('GPS not available', 'warning');
+            resolve(lastKnownGPS || { lat: null, lng: null });
             return;
         }
-        navigator.geolocation.getCurrentPosition(
-            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-            () => {
-                // Fallback: try again without high accuracy
-                navigator.geolocation.getCurrentPosition(
-                    pos2 => resolve({ lat: pos2.coords.latitude, lng: pos2.coords.longitude }),
-                    () => resolve({ lat: null, lng: null }),
-                    { timeout: 10000, enableHighAccuracy: false }
-                );
-            },
-            { timeout: 8000, enableHighAccuracy: true }
-        );
+
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        function tryGPS(highAccuracy) {
+            attempts++;
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    const result = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    lastKnownGPS = result;
+                    resolve(result);
+                },
+                err => {
+                    if (attempts < maxAttempts) {
+                        // Retry with fallback to less accurate mode
+                        tryGPS(highAccuracy && attempts < 2);
+                    } else if (lastKnownGPS) {
+                        if (!silent) showToast('Using last known location', 'info');
+                        resolve(lastKnownGPS);
+                    } else {
+                        if (!silent) showToast('Could not get GPS', 'warning');
+                        resolve({ lat: null, lng: null });
+                    }
+                },
+                { timeout: highAccuracy ? 8000 : 15000, enableHighAccuracy: highAccuracy }
+            );
+        }
+
+        tryGPS(true);
     });
 }

@@ -8,38 +8,44 @@ let dashboardPolling = null;
 async function loadDashboard() {
     if (!sb) return;
 
-    const wh = getWarehouseName();
+    try {
+        const wh = getWarehouseName();
 
-    // Load stats
-    const [routesRes, issuesRes] = await Promise.all([
-        sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops').eq('plant_name', wh),
-        sb.from('issues').select('id', { count: 'exact' }).eq('acknowledged', false)
-    ]);
+        // Load stats
+        const [routesRes, issuesRes] = await Promise.all([
+            sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops').eq('plant_name', wh),
+            sb.from('issues').select('id', { count: 'exact' }).eq('acknowledged', false)
+        ]);
 
-    const routes = routesRes.data || [];
-    const pending = routes.filter(r => r.status === 'pending').length;
-    const inTransit = routes.filter(r => r.status === 'in_transit').length;
-    const completed = routes.filter(r => r.status === 'completed').length;
-    const openIssues = issuesRes.count || 0;
+        const routes = routesRes.data || [];
+        const pending = routes.filter(r => r.status === 'pending').length;
+        const inTransit = routes.filter(r => r.status === 'in_transit').length;
+        const completed = routes.filter(r => r.status === 'completed').length;
+        const openIssues = issuesRes.count || 0;
 
-    document.getElementById('statTotal').textContent = routes.length;
-    document.getElementById('statPending').textContent = pending;
-    document.getElementById('statTransit').textContent = inTransit;
-    document.getElementById('statCompleted').textContent = completed;
-    document.getElementById('statIssues').textContent = openIssues;
+        document.getElementById('statTotal').textContent = routes.length;
+        document.getElementById('statPending').textContent = pending;
+        document.getElementById('statTransit').textContent = inTransit;
+        document.getElementById('statCompleted').textContent = completed;
+        document.getElementById('statIssues').textContent = openIssues;
 
-    // Load active routes (in_transit)
-    await loadActiveRoutes();
+        // Load active routes (in_transit)
+        await loadActiveRoutes();
 
-    // Load recent completed
-    await loadRecentRoutes();
+        // Load recent completed
+        await loadRecentRoutes();
 
-    // Start polling for live updates
-    startDashboardPolling();
+        // Start polling for live updates
+        startDashboardPolling();
+    } catch (e) {
+        console.error('loadDashboard:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }
 
 async function loadActiveRoutes() {
-    const { data } = await sb
+    try {
+        const { data } = await sb
         .from('routes')
         .select('*, route_stops(*)')
         .eq('status', 'in_transit')
@@ -62,8 +68,8 @@ async function loadActiveRoutes() {
 
         html += '<div class="active-route-card" onclick="viewRouteDetail(\'' + route.id + '\')" style="cursor:pointer;">';
         html += '<div class="arc-header">';
-        html += '<div><strong>' + (route.route_name || route.route_code) + '</strong>';
-        html += '<span class="arc-meta">' + route.district + ' - ' + route.vehicle_number + '</span></div>';
+        html += '<div><strong>' + escapeHtml(route.route_name || route.route_code) + '</strong>';
+        html += '<span class="arc-meta">' + escapeHtml(route.district) + ' - ' + escapeHtml(route.vehicle_number) + '</span></div>';
         html += '<span class="arc-pct">' + pct + '%</span>';
         html += '</div>';
         html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
@@ -78,7 +84,7 @@ async function loadActiveRoutes() {
         html += '<div class="stop-dots">';
         stops.sort((a, b) => a.stop_sequence - b.stop_sequence).forEach(s => {
             const cls = s.status === 'delivered' ? 'done' : s.status === 'partial' ? 'partial' : s.status === 'failed' ? 'failed' : 'pending';
-            html += '<span class="dot ' + cls + '" title="' + s.customer_name + '"></span>';
+            html += '<span class="dot ' + cls + '" title="' + escapeHtml(s.customer_name) + '"></span>';
         });
         html += '</div>';
 
@@ -86,10 +92,15 @@ async function loadActiveRoutes() {
     });
 
     container.innerHTML = html;
+    } catch (e) {
+        console.error('loadActiveRoutes:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }
 
 async function loadRecentRoutes() {
-    const { data } = await sb
+    try {
+        const { data } = await sb
         .from('routes')
         .select('*')
         .eq('plant_name', getWarehouseName())
@@ -107,31 +118,40 @@ async function loadRecentRoutes() {
         const statusClass = r.status === 'completed' ? 'status-completed' : 
                            r.status === 'in_transit' ? 'status-transit' : 'status-pending';
         return '<tr onclick="viewRouteDetail(\'' + r.id + '\')" style="cursor:pointer;">' +
-            '<td><strong>' + r.route_code + '</strong></td>' +
-            '<td>' + (r.route_name || '-') + '</td>' +
-            '<td>' + (r.district || '-') + '</td>' +
+            '<td><strong>' + escapeHtml(r.route_code) + '</strong></td>' +
+            '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
+            '<td>' + escapeHtml(r.district || '-') + '</td>' +
             '<td>' + formatDate(r.dispatch_date) + '</td>' +
             '<td>' + (r.completed_stops || 0) + '/' + (r.total_stops || 0) + '</td>' +
-            '<td><span class="status-badge ' + statusClass + '">' + r.status + '</span></td>' +
+            '<td><span class="status-badge ' + escapeHtml(statusClass) + '">' + escapeHtml(r.status) + '</span></td>' +
             '<td><span class="link-delete" onclick="deleteRoute(\'' + r.id + '\')">Delete</span></td>' +
             '</tr>';
     }).join('');
+    } catch (e) {
+        console.error('loadRecentRoutes:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }
 
 // Check for new issues (polling)
 async function checkIssues() {
     if (!sb) return;
 
-    const { data } = await sb
-        .from('issues')
-        .select('*, routes(route_code, route_name)')
-        .eq('acknowledged', false)
-        .order('reported_at', { ascending: false })
-        .limit(1);
+    try {
+        const { data } = await sb
+            .from('issues')
+            .select('*, routes(route_code, route_name)')
+            .eq('acknowledged', false)
+            .order('reported_at', { ascending: false })
+            .limit(1);
 
-    if (data && data.length > 0) {
-        const issue = data[0];
-        showIssueAlert(issue);
+        if (data && data.length > 0) {
+            const issue = data[0];
+            showIssueAlert(issue);
+        }
+    } catch (e) {
+        console.error('checkIssues:', e);
+        showToast(e.message || 'Something went wrong', 'error');
     }
 }
 
@@ -140,22 +160,27 @@ function showIssueAlert(issue) {
     const route = issue.routes || {};
 
     document.getElementById('issueAlertText').innerHTML = 
-        '<strong>' + issue.issue_type + '</strong><br>' +
-        (issue.details || '') + '<br>' +
-        '<span class="issue-meta">Route: ' + (route.route_code || '?') + ' - ' + formatTime(issue.reported_at) + '</span>';
+        '<strong>' + escapeHtml(issue.issue_type) + '</strong><br>' +
+        escapeHtml(issue.details || '') + '<br>' +
+        '<span class="issue-meta">Route: ' + escapeHtml(route.route_code || '?') + ' - ' + formatTime(issue.reported_at) + '</span>';
 
     popup.classList.add('visible');
 }
 
 async function dismissIssue() {
-    await sb.from('issues').update({ 
-        acknowledged: true,
-        acknowledged_by: currentAdmin ? currentAdmin.id : null,
-        acknowledged_at: new Date().toISOString()
-    }).eq('acknowledged', false);
+    try {
+        await sb.from('issues').update({ 
+            acknowledged: true,
+            acknowledged_by: currentAdmin ? currentAdmin.id : null,
+            acknowledged_at: new Date().toISOString()
+        }).eq('acknowledged', false);
 
-    document.getElementById('issueAlertPopup').classList.remove('visible');
-    loadDashboard();
+        document.getElementById('issueAlertPopup').classList.remove('visible');
+        loadDashboard();
+    } catch (e) {
+        console.error('dismissIssue:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }
 
 function startDashboardPolling() {

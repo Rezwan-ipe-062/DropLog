@@ -11,53 +11,58 @@ let stopsCache = {}; // gd_id > stops array
 async function loadAvailableGDs() {
     if (!sb) return;
 
-    const wh = getWarehouseName();
+    try {
+        const wh = getWarehouseName();
 
-    // Simple query - no JOIN (avoids relationship issues)
-    const { data: gds, error } = await sb
-        .from('available_gds')
-        .select('*')
-        .eq('status', 'available')
-        .eq('plant_name', wh)
-        .order('posting_date', { ascending: false });
-
-    if (error) {
-        console.error('loadAvailableGDs error:', error);
-        showToast('Error loading GDs', 'error');
-        return;
-    }
-
-    availableGDs = gds || [];
-    console.log('Loaded GDs:', availableGDs.length);
-
-    // Load stops separately
-    if (availableGDs.length > 0) {
-        const gdIds = availableGDs.map(g => g.id);
-        const { data: stops } = await sb
-            .from('parsed_stops')
+        // Simple query - no JOIN (avoids relationship issues)
+        const { data: gds, error } = await sb
+            .from('available_gds')
             .select('*')
-            .in('gd_id', gdIds);
+            .eq('status', 'available')
+            .eq('plant_name', wh)
+            .order('posting_date', { ascending: false });
 
-        // Build cache: gd_id > [stops]
-        stopsCache = {};
-        (stops || []).forEach(s => {
-            if (!stopsCache[s.gd_id]) stopsCache[s.gd_id] = [];
-            stopsCache[s.gd_id].push(s);
-        });
-        console.log('Loaded stops:', (stops || []).length);
+        if (error) {
+            console.error('loadAvailableGDs error:', error);
+            showToast('Error loading GDs', 'error');
+            return;
+        }
+
+        availableGDs = gds || [];
+        console.log('Loaded GDs:', availableGDs.length);
+
+        // Load stops separately
+        if (availableGDs.length > 0) {
+            const gdIds = availableGDs.map(g => g.id);
+            const { data: stops } = await sb
+                .from('parsed_stops')
+                .select('*')
+                .in('gd_id', gdIds);
+
+            // Build cache: gd_id > [stops]
+            stopsCache = {};
+            (stops || []).forEach(s => {
+                if (!stopsCache[s.gd_id]) stopsCache[s.gd_id] = [];
+                stopsCache[s.gd_id].push(s);
+            });
+            console.log('Loaded stops:', (stops || []).length);
+        }
+
+        selectedGDs.clear();
+        renderRouteBuilder();
+
+        // Load SO list (scoped to active warehouse)
+        const { data: users } = await sb
+            .from('users')
+            .select('*')
+            .eq('role', 'so')
+            .eq('is_active', true)
+            .eq('warehouse', wh);
+        soList = users || [];
+    } catch (e) {
+        console.error('loadAvailableGDs:', e);
+        showToast(e.message || 'Something went wrong', 'error');
     }
-
-    selectedGDs.clear();
-    renderRouteBuilder();
-
-    // Load SO list (scoped to active warehouse)
-    const { data: users } = await sb
-        .from('users')
-        .select('*')
-        .eq('role', 'so')
-        .eq('is_active', true)
-        .eq('warehouse', wh);
-    soList = users || [];
 }
 
 function getStopsForGD(gd) {
@@ -121,16 +126,16 @@ function renderGDCard(gd) {
     const isMulti = gd.is_multi_stop;
 
     let html = '<div class="gd-card ' + (isSelected ? 'selected' : '') + (isMulti ? ' multi' : '') + '" ';
-    html += 'onclick="toggleGDSelection(\'' + gd.group_delivery_number + '\')">';
+    html += 'onclick="toggleGDSelection(\'' + escapeHtml(gd.group_delivery_number) + '\')">';
 
     html += '<div class="gd-card-header">';
     html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' class="gd-checkbox">';
     html += '<div class="gd-card-title">';
-    html += '<strong>GD ' + gd.group_delivery_number + '</strong>';
-    html += '<span class="gd-meta">' + (gd.district || '') + ' - ' + formatDate(gd.posting_date) + '</span>';
+    html += '<strong>GD ' + escapeHtml(gd.group_delivery_number) + '</strong>';
+    html += '<span class="gd-meta">' + escapeHtml(gd.district || '') + ' - ' + formatDate(gd.posting_date) + '</span>';
     html += '</div>';
     html += '<div class="gd-card-stats">';
-    html += '<span class="stat-pill">' + gd.num_unique_customers + ' stop' + (gd.num_unique_customers > 1 ? 's' : '') + '</span>';
+    html += '<span class="stat-pill">' + escapeHtml(gd.num_unique_customers) + ' stop' + (gd.num_unique_customers > 1 ? 's' : '') + '</span>';
     html += '<span class="stat-pill">' + Math.round(gd.total_quantity) + ' units</span>';
     html += '</div>';
     html += '</div>';
@@ -139,7 +144,7 @@ function renderGDCard(gd) {
     if (stops.length > 0) {
         html += '<div class="gd-stops-list">';
         stops.forEach(s => {
-            html += '<div class="gd-stop-item">> ' + s.customer_name + ' <span class="qty-badge">' + Math.round(s.total_quantity) + '</span></div>';
+            html += '<div class="gd-stop-item">> ' + escapeHtml(s.customer_name) + ' <span class="qty-badge">' + Math.round(s.total_quantity) + '</span></div>';
         });
         html += '</div>';
     }
@@ -155,7 +160,7 @@ function renderBundleCard(bundle, idx) {
     html += '<div class="bundle-header" onclick="toggleBundleSelection(' + idx + ')">';
     html += '<input type="checkbox" ' + (isAllSelected ? 'checked' : '') + ' class="gd-checkbox">';
     html += '<div>';
-    html += '<strong>' + bundle.district + '</strong> - ' + formatDate(bundle.date);
+    html += '<strong>' + escapeHtml(bundle.district) + '</strong> - ' + formatDate(bundle.date);
     html += '<span class="gd-meta"> - ' + bundle.gds.length + ' GDs, ' + bundle.totalCustomers + ' customers, ' + Math.round(bundle.totalQty) + ' units</span>';
     html += '</div>';
     html += '</div>';
@@ -166,9 +171,9 @@ function renderBundleCard(bundle, idx) {
         const custName = stops.length > 0 ? stops[0].customer_name : (gd.district || 'Customer');
         const isSelected = selectedGDs.has(gd.group_delivery_number);
 
-        html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : '') + '" onclick="event.stopPropagation(); toggleGDSelection(\'' + gd.group_delivery_number + '\')">';
+        html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : '') + '" onclick="event.stopPropagation(); toggleGDSelection(\'' + escapeHtml(gd.group_delivery_number) + '\')">';
         html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + '>';
-        html += '<span>' + custName + '</span>';
+        html += '<span>' + escapeHtml(custName) + '</span>';
         html += '<span class="qty-badge">' + Math.round(gd.total_quantity) + ' units</span>';
         html += '</div>';
     });
@@ -241,7 +246,7 @@ function updateRouteForm() {
 
     document.getElementById('rfSummary').innerHTML = 
         '<strong>Selected:</strong> ' + selectedGDs.size + ' GDs > ' + totalStops + ' stops > ' + Math.round(totalQty) + ' units<br>' +
-        '<strong>Districts:</strong> ' + districts.join(', ');
+        '<strong>Districts:</strong> ' + districts.map(d => escapeHtml(d)).join(', ');
 }
 
 // ---- Create Route ----

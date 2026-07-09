@@ -170,9 +170,10 @@ ALTER TABLE issues ADD CONSTRAINT issues_route_id_fkey
 --           data. These policies are intentionally permissive (all operations
 --           allowed for any authenticated user).
 --
--- NOTE:     In production, these should be refined to restrict by role
---           (e.g., SOs can only read their own routes). The current permissive
---           policy was chosen during development for simplicity.
+-- NOTE:     Access control is handled at the application level (JavaScript
+--           enforces warehouse scoping via .eq('warehouse', getWarehouseName()))
+--           rather than through RLS, because the app uses a custom PIN-based
+--           auth system (not Supabase Auth JWT).
 --
 -- TABLES WITH RLS ENABLED: All 18 tables listed below.
 -- ============================================================================
