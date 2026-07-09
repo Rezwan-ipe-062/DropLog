@@ -9,6 +9,7 @@ async function loadUsers() {
         .from('users')
         .select('*')
         .eq('role', 'so')
+        .eq('warehouse', getActiveWarehouse())
         .order('name');
 
     const tbody = document.getElementById('usersBody');
@@ -45,7 +46,7 @@ async function addUser() {
 
     const { error } = await sb.from('users').insert({
         user_id: userId, name, pin, role: 'so',
-        phone: phone || null, warehouse: CONFIG.PLANT_NAME
+        phone: phone || null, warehouse: getActiveWarehouse()
     });
 
     if (error) {

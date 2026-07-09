@@ -1,5 +1,5 @@
 // ============================================================
-// DropLog Admin — Authentication Module v2
+// DropLog Admin — Authentication Module v3 (Multi-Warehouse)
 // ============================================================
 
 let currentAdmin = null;
@@ -12,7 +12,22 @@ function showLoginScreen() {
 function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('adminName').textContent = currentAdmin.name || 'Admin';
+
+    // Warehouse-aware header
+    var wh = getActiveWarehouse();
+    var whLabel = getWarehouseLabel();
+    document.getElementById('adminName').textContent = (currentAdmin.name || 'Admin') + ' — ' + whLabel;
+
+    // Add warehouse tag to header-right
+    var el = document.querySelector('.header-right .wh-tag');
+    if (!el) {
+        el = document.createElement('span');
+        el.className = 'wh-tag';
+        el.style.cssText = 'background:rgba(255,255,255,0.12);padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;';
+        document.querySelector('.header-right').insertBefore(el, document.querySelector('.btn-logout'));
+    }
+    el.textContent = whLabel;
+
     switchTab('dashboard');
 }
 
@@ -23,6 +38,9 @@ async function handleAdminLogin() {
     if (!userId) { showToast('Enter Admin ID', 'warning'); return; }
     if (!pin) { showToast('Enter password', 'warning'); return; }
     if (!sb) { showToast('Connecting...', 'warning'); return; }
+
+    // Set warehouse from URL param (or default)
+    setActiveWarehouse(getActiveWarehouse());
 
     const { data, error } = await sb
         .from('users')
@@ -56,7 +74,7 @@ async function checkSession() {
 
     try {
         const parsed = JSON.parse(saved);
-        // Validate session against DB
+
         const { data, error } = await sb
             .from('users')
             .select('id, name, role, user_id')
@@ -71,6 +89,8 @@ async function checkSession() {
         }
 
         currentAdmin = data;
+        // Initialize warehouse from URL param
+        setActiveWarehouse(getActiveWarehouse());
         showMainApp();
     } catch (e) {
         localStorage.removeItem('droplog_admin');

@@ -9,9 +9,10 @@ let dashboardFilter = 'all';
 async function loadDashboard() {
     if (!sb) return;
 
-    // Load stats
+    var wh = getActiveWarehouse();
+
     const [routesRes, issuesRes] = await Promise.all([
-        sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops'),
+        sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops').eq('warehouse', wh),
         sb.from('issues').select('id', { count: 'exact' }).eq('acknowledged', false)
     ]);
 
@@ -42,6 +43,7 @@ async function loadActiveRoutes() {
         .from('routes')
         .select('*, route_stops(*)')
         .eq('status', 'in_transit')
+        .eq('warehouse', getActiveWarehouse())
         .order('started_at', { ascending: false });
 
     const container = document.getElementById('activeRoutes');
@@ -122,12 +124,14 @@ function exportRoutesCSV() {
 }
 
 async function loadRecentRoutes() {
+    var wh = getActiveWarehouse();
     const statusFilter = dashboardFilter === 'all' ? ['completed', 'pending', 'in_transit'] : [dashboardFilter];
 
     const { data } = await sb
         .from('routes')
         .select('*')
         .in('status', statusFilter)
+        .eq('warehouse', wh)
         .order('created_at', { ascending: false })
         .limit(20);
 

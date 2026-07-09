@@ -36,7 +36,7 @@ async function loadVehicles() {
     const el = document.getElementById('fleetVehiclesContent');
     if (!sb) { el.innerHTML = '<p>Not connected.</p>'; return; }
 
-    const { data, error } = await sb.from('fleet_vehicles').select('*').order('vehicle_number');
+    const { data, error } = await sb.from('fleet_vehicles').select('*').eq('warehouse_code', getActiveWarehouse()).order('vehicle_number');
     if (error) { el.innerHTML = '<p class="error">Error: ' + error.message + '</p>'; return; }
 
     el.innerHTML = `
@@ -76,7 +76,8 @@ async function addVehicle() {
         vehicle_number: vehicle_number,
         driver_name: document.getElementById('newVehicleDriver').value.trim() || null,
         driver_phone: document.getElementById('newVehiclePhone').value.trim() || null,
-        capacity_kg: parseInt(document.getElementById('newVehicleCapacity').value) || null
+        capacity_kg: parseInt(document.getElementById('newVehicleCapacity').value) || null,
+        warehouse_code: getActiveWarehouse()
     });
 
     ['newVehicleNo','newVehicleDriver','newVehiclePhone','newVehicleCapacity'].forEach(id =>
@@ -128,7 +129,7 @@ async function loadVendors() {
     const el = document.getElementById('fleetVendorsContent');
     if (!sb) { el.innerHTML = '<p>Not connected.</p>'; return; }
 
-    const { data, error } = await sb.from('vendors').select('*').order('vendor_name');
+    const { data, error } = await sb.from('vendors').select('*').eq('warehouse_code', getActiveWarehouse()).order('vendor_name');
     if (error) { el.innerHTML = '<p class="error">Error: ' + error.message + '</p>'; return; }
 
     el.innerHTML = `
@@ -162,7 +163,8 @@ async function addVendor() {
 
     await sb.from('vendors').insert({
         vendor_name: vendor_name,
-        contact_phone: document.getElementById('newVendorPhone').value.trim() || null
+        contact_phone: document.getElementById('newVendorPhone').value.trim() || null,
+        warehouse_code: getActiveWarehouse()
     });
 
     document.getElementById('newVendorName').value = '';
@@ -214,7 +216,7 @@ async function loadRouteTemplates() {
     const el = document.getElementById('fleetRoutesContent');
     if (!sb) { el.innerHTML = '<p>Not connected.</p>'; return; }
 
-    const { data, error } = await sb.from('route_templates').select('*').order('template_name');
+    const { data, error } = await sb.from('route_templates').select('*').eq('warehouse_code', getActiveWarehouse()).order('template_name');
     if (error) { el.innerHTML = '<p class="error">Error: ' + error.message + '</p>'; return; }
 
     el.innerHTML = `
@@ -251,7 +253,8 @@ async function addRouteTemplate() {
     await sb.from('route_templates').insert({
         template_name: template_name,
         description: document.getElementById('newRouteTemplateDesc').value.trim() || null,
-        customer_ids: document.getElementById('newRouteTemplateCustomers').value.trim() || null
+        customer_ids: document.getElementById('newRouteTemplateCustomers').value.trim() || null,
+        warehouse_code: getActiveWarehouse()
     });
 
     ['newRouteTemplateName','newRouteTemplateDesc','newRouteTemplateCustomers'].forEach(id =>

@@ -48,11 +48,13 @@ async function handleSAPUpload(event) {
         const grouped = groupIntoStructure(mapped);
 
         // Pre-upload validation: show warning if GDs already assigned
+        var wh = getActiveWarehouse();
         const existingGdNums = grouped.map(g => g.group_delivery_number);
         const { data: existingGds } = await sb
             .from('available_gds')
             .select('group_delivery_number, status')
-            .in('group_delivery_number', existingGdNums);
+            .in('group_delivery_number', existingGdNums)
+            .eq('warehouse', wh);
 
         const assignedGds = (existingGds || []).filter(g => g.status === 'assigned');
         if (assignedGds.length > 0) {
@@ -303,6 +305,7 @@ async function writeToSupabase(rawRows, grouped) {
                 .from('available_gds')
                 .select('id, status')
                 .eq('group_delivery_number', gd.group_delivery_number)
+                .eq('warehouse', getActiveWarehouse())
                 .maybeSingle();
 
             if (existing && existing.status === 'assigned') {
@@ -322,7 +325,8 @@ async function writeToSupabase(rawRows, grouped) {
                 total_quantity: gd.total_quantity,
                 total_products: gd.total_products,
                 is_multi_stop: gd.is_multi_stop,
-                status: 'available'
+                status: 'available',
+                warehouse: getActiveWarehouse()
             };
 
             const { data: insertedGd, error: gdErr } = await sb

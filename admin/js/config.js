@@ -1,7 +1,6 @@
 // ============================================================
 // DropLog Admin â€” Configuration
 // ============================================================
-// Change ONLY this file when switching environments
 
 const CONFIG = {
     // Supabase
@@ -10,11 +9,20 @@ const CONFIG = {
 
     // App settings
     APP_NAME: 'DropLog',
-    VERSION: '2.0.0',
-    PLANT_NAME: 'CHITTAGONG',
+    VERSION: '3.0.0',
+
+    // Multi-warehouse support: query param ?wh=CTG or ?wh=GAZ etc.
+    // Default is CHITTAGONG if no param
+    WAREHOUSES: {
+        CTG: { name: 'CHITTAGONG', label: 'Chittagong' },
+        GAZ: { name: 'GAZIPUR', label: 'Gazipur' },
+        JSR: { name: 'JESSORE', label: 'Jessore' },
+        BGR: { name: 'BOGRA', label: 'Bogra' }
+    },
+    DEFAULT_WAREHOUSE: 'CTG',
 
     // Route code format: {PLANT_SHORT}-{DISTRICT_SHORT}-{DATE}-{SEQ}
-    PLANT_SHORT: 'CTG',
+    // PLANT_SHORT is now derived from the active warehouse
 
     // SAP Parser â€” columns to extract from "Data" sheet
     SAP_COLUMNS: {
@@ -82,10 +90,60 @@ function formatTime(dateStr) {
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+// ---- Multi-warehouse helpers ----
+
+let _activeWarehouse = null;
+
+function getActiveWarehouse() {
+    if (_activeWarehouse) return _activeWarehouse;
+
+    // 1. URL param ?wh=CTG
+    var params = new URLSearchParams(window.location.search);
+    var whParam = params.get('wh');
+
+    // 2. Fall back to localStorage
+    var whStored = localStorage.getItem('droplog_warehouse');
+
+    // 3. Default
+    var whCode = whParam || whStored || CONFIG.DEFAULT_WAREHOUSE;
+
+    // Validate against known warehouses
+    if (!CONFIG.WAREHOUSES[whCode]) {
+        whCode = CONFIG.DEFAULT_WAREHOUSE;
+    }
+
+    _activeWarehouse = whCode;
+    return whCode;
+}
+
+function setActiveWarehouse(code) {
+    if (CONFIG.WAREHOUSES[code]) {
+        _activeWarehouse = code;
+        localStorage.setItem('droplog_warehouse', code);
+    }
+}
+
+function getWarehouseName() {
+    var wh = getActiveWarehouse();
+    return CONFIG.WAREHOUSES[wh] ? CONFIG.WAREHOUSES[wh].name : wh;
+}
+
+function getWarehouseLabel() {
+    var wh = getActiveWarehouse();
+    return CONFIG.WAREHOUSES[wh] ? CONFIG.WAREHOUSES[wh].label : wh;
+}
+
+// Filter helper — adds .eq('warehouse', wh) to a Supabase query
+// For fleet tables that use warehouse_code column instead
+function scopeWarehouse(query, column) {
+    column = column || 'warehouse';
+    return query.eq(column, getActiveWarehouse());
+}
+
 function generateRouteCode(district, date) {
     const d = new Date(date);
     const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
     const distShort = (district || 'UNK').substring(0, 4).toUpperCase();
     const rand = Math.floor(Math.random() * 99).toString().padStart(2, '0');
-    return CONFIG.PLANT_SHORT + '-' + distShort + '-' + dateStr + '-' + rand;
+    return getActiveWarehouse() + '-' + distShort + '-' + dateStr + '-' + rand;
 }

@@ -17,6 +17,7 @@ async function loadAvailableGDs() {
         .from('available_gds')
         .select('*')
         .eq('status', 'available')
+        .eq('warehouse', getActiveWarehouse())
         .order('posting_date', { ascending: false });
 
     if (error) {
@@ -464,9 +465,10 @@ function groupSinglesIntoBundles(singleStopGDs) {
 // ---- Load fleet data for dropdowns ----
 async function loadFleetData() {
     if (!sb) return;
+    var wh = getActiveWarehouse();
     const [vehRes, venRes] = await Promise.all([
-        sb.from('fleet_vehicles').select('*').eq('is_active', true).order('vehicle_number'),
-        sb.from('vendors').select('*').eq('is_active', true).order('vendor_name')
+        sb.from('fleet_vehicles').select('*').eq('is_active', true).eq('warehouse_code', wh).order('vehicle_number'),
+        sb.from('vendors').select('*').eq('warehouse_code', wh).order('vendor_name').limit(200)
     ]);
     fleetVehicles = vehRes.data || [];
     vendors = venRes.data || [];
