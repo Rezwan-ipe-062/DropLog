@@ -1,11 +1,13 @@
 -- =====================================================
--- DROPLOG DATABASE SCHEMA v2.0 (Modular)
--- Run this in Supabase SQL Editor (in order)
+-- DROPLOG — COMPLETE DATABASE SCHEMA v3.3
+-- Run this entire script in Supabase SQL Editor
+-- Name the tab: "DropLog - Full Schema v3.3"
+-- =====================================================
+-- Run ONCE when setting up a fresh Supabase project.
+-- Safe to re-run (all CREATEs use IF NOT EXISTS).
 -- =====================================================
 
--- NOTE: Run users table FIRST (other tables reference it)
-
--- 10. USERS (Auth)
+-- 1. USERS (Auth & Roles)
 CREATE TABLE IF NOT EXISTS users (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id             TEXT UNIQUE NOT NULL,
@@ -18,8 +20,11 @@ CREATE TABLE IF NOT EXISTS users (
     is_active           BOOLEAN DEFAULT TRUE,
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_wh ON users(warehouse);
 
--- 11. CONTACTS
+-- 2. CONTACTS (Customer Directory)
 CREATE TABLE IF NOT EXISTS contacts (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     customer_id         TEXT UNIQUE,
@@ -34,8 +39,9 @@ CREATE TABLE IF NOT EXISTS contacts (
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(customer_name);
+CREATE INDEX IF NOT EXISTS idx_contacts_district ON contacts(district);
 
--- 1. RAW DELIVERIES (audit trail)
+-- 3. RAW DELIVERIES (SAP Audit Trail)
 CREATE TABLE IF NOT EXISTS raw_deliveries (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     upload_batch_id     UUID NOT NULL,
@@ -67,8 +73,9 @@ CREATE TABLE IF NOT EXISTS raw_deliveries (
 );
 CREATE INDEX IF NOT EXISTS idx_raw_gd ON raw_deliveries(group_delivery_number);
 CREATE INDEX IF NOT EXISTS idx_raw_batch ON raw_deliveries(upload_batch_id);
+CREATE INDEX IF NOT EXISTS idx_raw_plant ON raw_deliveries(plant_name);
 
--- 2. AVAILABLE GDs
+-- 4. AVAILABLE GROUP DELIVERIES
 CREATE TABLE IF NOT EXISTS available_gds (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     group_delivery_number TEXT UNIQUE NOT NULL,
@@ -81,14 +88,16 @@ CREATE TABLE IF NOT EXISTS available_gds (
     total_quantity      NUMERIC DEFAULT 0,
     total_products      INT DEFAULT 0,
     is_multi_stop       BOOLEAN DEFAULT FALSE,
-    status              TEXT DEFAULT 'available' CHECK (status IN ('available', 'assigned', 'completed')),
+    status              TEXT DEFAULT 'available'
+                        CHECK (status IN ('available', 'assigned', 'completed')),
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_gd_status ON available_gds(status);
 CREATE INDEX IF NOT EXISTS idx_gd_date ON available_gds(posting_date);
 CREATE INDEX IF NOT EXISTS idx_gd_district ON available_gds(district);
+CREATE INDEX IF NOT EXISTS idx_gd_plant ON available_gds(plant_name);
 
--- 3. PARSED STOPS
+-- 5. PARSED STOPS (within each GD)
 CREATE TABLE IF NOT EXISTS parsed_stops (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     gd_id               UUID REFERENCES available_gds(id) ON DELETE CASCADE,
@@ -106,7 +115,7 @@ CREATE TABLE IF NOT EXISTS parsed_stops (
 CREATE INDEX IF NOT EXISTS idx_ps_gd ON parsed_stops(gd_id);
 CREATE INDEX IF NOT EXISTS idx_ps_customer ON parsed_stops(customer_name);
 
--- 4. PARSED PRODUCTS
+-- 6. PARSED PRODUCTS (within each stop)
 CREATE TABLE IF NOT EXISTS parsed_products (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     stop_id             UUID REFERENCES parsed_stops(id) ON DELETE CASCADE,
@@ -121,7 +130,7 @@ CREATE TABLE IF NOT EXISTS parsed_products (
 );
 CREATE INDEX IF NOT EXISTS idx_pp_stop ON parsed_products(stop_id);
 
--- 5. ROUTES
+-- 7. ROUTES (Core table)
 CREATE TABLE IF NOT EXISTS routes (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     route_code          TEXT UNIQUE NOT NULL,
@@ -134,7 +143,8 @@ CREATE TABLE IF NOT EXISTS routes (
     plant_name          TEXT,
     district            TEXT,
     group_delivery_numbers TEXT[] NOT NULL,
-    status              TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_transit', 'completed', 'cancelled')),
+    status              TEXT DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'in_transit', 'completed', 'cancelled')),
     started_at          TIMESTAMPTZ,
     completed_at        TIMESTAMPTZ,
     start_gps_lat       DOUBLE PRECISION,
@@ -145,6 +155,13 @@ CREATE TABLE IF NOT EXISTS routes (
     completed_stops     INT DEFAULT 0,
     failed_stops        INT DEFAULT 0,
     total_distance_km   NUMERIC,
+    initial_km_reading  NUMERIC,
+    final_km_reading    NUMERIC,
+    driven_km           NUMERIC,
+    transit_volume_mt   NUMERIC,
+    vehicle_capacity_mt NUMERIC,
+    so_travelling_expense NUMERIC,
+    num_vehicles_used   INT DEFAULT 1,
     pdf_url             TEXT,
     created_at          TIMESTAMPTZ DEFAULT NOW(),
     created_by          UUID REFERENCES users(id)
@@ -152,8 +169,9 @@ CREATE TABLE IF NOT EXISTS routes (
 CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
 CREATE INDEX IF NOT EXISTS idx_routes_date ON routes(dispatch_date);
 CREATE INDEX IF NOT EXISTS idx_routes_so ON routes(assigned_so_id);
+CREATE INDEX IF NOT EXISTS idx_routes_plant ON routes(plant_name);
 
--- 6. ROUTE STOPS
+-- 8. ROUTE STOPS
 CREATE TABLE IF NOT EXISTS route_stops (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     route_id            UUID REFERENCES routes(id) ON DELETE CASCADE,
@@ -163,7 +181,8 @@ CREATE TABLE IF NOT EXISTS route_stops (
     address             TEXT,
     district            TEXT,
     delivery_documents  TEXT[],
-    status              TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'partial', 'failed')),
+    status              TEXT DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'delivered', 'partial', 'failed')),
     delivered_at        TIMESTAMPTZ,
     gps_lat             DOUBLE PRECISION,
     gps_lng             DOUBLE PRECISION,
@@ -174,7 +193,7 @@ CREATE TABLE IF NOT EXISTS route_stops (
 CREATE INDEX IF NOT EXISTS idx_rs_route ON route_stops(route_id);
 CREATE INDEX IF NOT EXISTS idx_rs_status ON route_stops(status);
 
--- 7. STOP PRODUCTS
+-- 9. STOP PRODUCTS
 CREATE TABLE IF NOT EXISTS stop_products (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     route_stop_id       UUID REFERENCES route_stops(id) ON DELETE CASCADE,
@@ -189,7 +208,7 @@ CREATE TABLE IF NOT EXISTS stop_products (
 );
 CREATE INDEX IF NOT EXISTS idx_sp_stop ON stop_products(route_stop_id);
 
--- 8. DELIVERY EVENTS
+-- 10. DELIVERY EVENTS (Audit Log)
 CREATE TABLE IF NOT EXISTS delivery_events (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     route_id            UUID REFERENCES routes(id),
@@ -209,7 +228,7 @@ CREATE TABLE IF NOT EXISTS delivery_events (
 CREATE INDEX IF NOT EXISTS idx_de_route ON delivery_events(route_id);
 CREATE INDEX IF NOT EXISTS idx_de_type ON delivery_events(event_type);
 
--- 9. ISSUES
+-- 11. ISSUES
 CREATE TABLE IF NOT EXISTS issues (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     route_id            UUID REFERENCES routes(id),
@@ -238,7 +257,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     channel             TEXT CHECK (channel IN ('sms', 'whatsapp', 'email', 'push')),
     message_type        TEXT,
     message_text        TEXT,
-    status              TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'failed', 'delivered')),
+    status              TEXT DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'sent', 'failed', 'delivered')),
     sent_at             TIMESTAMPTZ,
     error_message       TEXT,
     triggered_at        TIMESTAMPTZ DEFAULT NOW()
@@ -257,7 +277,8 @@ CREATE TABLE IF NOT EXISTS vendor_settlements (
     distance_variance   NUMERIC,
     carrying_cost       NUMERIC,
     route_sales_value   NUMERIC,
-    settlement_status   TEXT DEFAULT 'pending' CHECK (settlement_status IN ('pending', 'verified', 'disputed', 'paid')),
+    settlement_status   TEXT DEFAULT 'pending'
+                        CHECK (settlement_status IN ('pending', 'verified', 'disputed', 'paid')),
     verified_by         UUID REFERENCES users(id),
     verified_at         TIMESTAMPTZ,
     pdf_url             TEXT,
@@ -266,14 +287,32 @@ CREATE TABLE IF NOT EXISTS vendor_settlements (
 CREATE INDEX IF NOT EXISTS idx_vs_route ON vendor_settlements(route_id);
 CREATE INDEX IF NOT EXISTS idx_vs_status ON vendor_settlements(settlement_status);
 
+-- 14. ISSUE TYPES (master data for SO app dropdown)
+CREATE TABLE IF NOT EXISTS issue_types (
+    id                  INT PRIMARY KEY,
+    name                TEXT NOT NULL,
+    icon                TEXT DEFAULT ''
+);
+INSERT INTO issue_types (id, name, icon) VALUES
+    (1,  'Vehicle breakdown',         ''),
+    (2,  'Road blocked / flooded',    ''),
+    (3,  'Accident',                  ''),
+    (4,  'Customer dispute',          ''),
+    (5,  'Product damage in transit', ''),
+    (6,  'Wrong product delivered',   ''),
+    (7,  'Customer not available',    ''),
+    (8,  'Payment issue',             ''),
+    (9,  'Traffic delay',             ''),
+    (10, 'Other',                     '')
+ON CONFLICT (id) DO NOTHING;
+
 -- =====================================================
--- ROW LEVEL SECURITY
+-- ROW LEVEL SECURITY (all tables)
 -- =====================================================
 ALTER TABLE routes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE route_stops ENABLE ROW LEVEL SECURITY;
 ALTER TABLE delivery_events ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for authenticated users (refine later per role)
 CREATE POLICY "Enable all for authenticated" ON routes FOR ALL USING (true);
 CREATE POLICY "Enable all for authenticated" ON route_stops FOR ALL USING (true);
 CREATE POLICY "Enable all for authenticated" ON delivery_events FOR ALL USING (true);
@@ -289,12 +328,14 @@ CREATE POLICY "Enable all for authenticated" ON notifications FOR ALL USING (tru
 CREATE POLICY "Enable all for authenticated" ON vendor_settlements FOR ALL USING (true);
 
 -- =====================================================
--- SEED: Insert admin users (one per warehouse)
+-- SEED DATA: 5 admin users (one per warehouse)
 -- =====================================================
 INSERT INTO users (user_id, name, pin, role, warehouse) VALUES
-    ('ADMIN-01', 'CSO Admin',     '0000', 'admin', 'CHITTAGONG'),
+    ('ADMIN-01',  'CSO Admin',    '0000', 'admin', 'CHITTAGONG'),
     ('ADMIN-CTG', 'CTG Admin',    '0001', 'admin', 'CHITTAGONG'),
     ('ADMIN-GAZ', 'GAZ Admin',    '0002', 'admin', 'GAZIPUR'),
     ('ADMIN-JSR', 'JSR Admin',    '0003', 'admin', 'JASHORE'),
     ('ADMIN-BGR', 'BGR Admin',    '0004', 'admin', 'BOGURA')
 ON CONFLICT (user_id) DO NOTHING;
+
+
