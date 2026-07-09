@@ -60,6 +60,13 @@ function showScreen(id) {
     if (!_backNav && id !== 'screenLogin') history.pushState({ screen: id }, '');
     _backNav = false;
 
+    // GPS breadcrumb trail map lifecycle
+    if (id === 'screenStops') {
+        setTimeout(initRouteMap, 100);
+    } else {
+        destroyRouteMap();
+    }
+
     if (id !== 'screenStops') {
         var btn = document.getElementById('btnSaveOrder');
         if (btn) { btn.style.display = 'none'; btn.textContent = 'Save Stop Order'; btn.disabled = false; }
