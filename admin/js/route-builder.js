@@ -174,14 +174,16 @@ function renderBundleCard(bundle, idx) {
     }
 
     const isAllSelected = bundle.gds.every(g => g && selectedGDs.has(g.group_delivery_number));
+    const totalGds = bundle.gds.length || 0;
 
     let html = '<div class="bundle-card ' + (isAllSelected ? 'selected' : '') + '">';
     html += '<div class="bundle-header" onclick="toggleBundleSelection(' + idx + ')">';
     html += '<input type="checkbox" ' + (isAllSelected ? 'checked' : '') + ' class="gd-checkbox">';
-    html += '<div>';
-    html += '<strong>' + escapeHtml(bundle.district || '?') + '</strong> - ' + formatDate(bundle.date);
-    html += '<span class="gd-meta"> - ' + (bundle.gds.length || 0) + ' GDs, ' + (bundle.totalCustomers || 0) + ' customers, ' + Math.round(bundle.totalQty || 0) + ' units</span>';
+    html += '<div class="bundle-header-info">';
+    html += '<strong>' + escapeHtml(bundle.district || '?') + '</strong>';
+    html += '<span class="gd-meta">' + formatDate(bundle.date) + ' — ' + totalGds + ' GDs, ' + (bundle.totalCustomers || 0) + ' stops, ' + Math.round(bundle.totalQty || 0) + ' units</span>';
     html += '</div>';
+    html += '<span class="stat-pill">' + totalGds + ' GDs</span>';
     html += '</div>';
 
     html += '<div class="bundle-gds">';
@@ -191,11 +193,15 @@ function renderBundleCard(bundle, idx) {
         const custName = stops.length > 0 ? (stops[0].customer_name || '?') : (gd.district || 'Customer');
         const isSelected = selectedGDs.has(gd.group_delivery_number);
         const gdNumEsc = escapeHtml(String(gd.group_delivery_number));
+        const totalQty = Math.round(gd.total_quantity || 0);
 
         html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : '') + '" onclick="event.stopPropagation(); toggleGDSelection(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\')">';
         html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + '>';
+        html += '<div class="bundle-gd-info">';
+        html += '<strong>GD ' + gdNumEsc + '</strong>';
         html += '<span>' + escapeHtml(custName) + '</span>';
-        html += '<span class="qty-badge">' + Math.round(gd.total_quantity || 0) + ' units</span>';
+        html += '</div>';
+        html += '<span class="qty-badge">' + totalQty + ' units</span>';
         html += '</div>';
     });
     html += '</div>';
