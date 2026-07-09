@@ -254,7 +254,8 @@
 function switchTab(tabName) {
     // Update nav
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+    const btn = Array.from(document.querySelectorAll('.nav-tab')).find(t => t.textContent.trim().toLowerCase().includes(tabName.replace('-', ' ')) || t.getAttribute('onclick')?.includes(tabName));
+    if (btn) btn.classList.add('active');
 
     // Update panels
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));

@@ -14,12 +14,10 @@ async function loadAvailableGDs() {
     try {
         const wh = getWarehouseName();
 
-        // Simple query - no JOIN (avoids relationship issues)
         const { data: gds, error } = await sb
             .from('available_gds')
             .select('*')
             .eq('status', 'available')
-            .eq('plant_name', wh)
             .order('posting_date', { ascending: false });
 
         if (error) {
@@ -29,14 +27,7 @@ async function loadAvailableGDs() {
         }
 
         availableGDs = gds || [];
-        console.log('[DEBUG] Loaded GDs:', availableGDs.length);
-        if (availableGDs.length > 0) {
-            console.log('[DEBUG] Sample GD:', JSON.stringify(availableGDs[0]));
-            const withMulti = availableGDs.filter(g => g.is_multi_stop).length;
-            const nullTotal = availableGDs.filter(g => g.total_quantity == null).length;
-            const nullCust = availableGDs.filter(g => g.num_unique_customers == null).length;
-            console.log('[DEBUG] multi_stop=' + withMulti + ' null_totalQty=' + nullTotal + ' null_numCust=' + nullCust);
-        }
+        console.log('[DEBUG] Loaded GDs:', availableGDs.length, 'for warehouse:', wh);
 
         // Load stops separately
         if (availableGDs.length > 0) {
