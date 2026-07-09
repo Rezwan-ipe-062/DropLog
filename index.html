@@ -45,17 +45,33 @@
     </div>
 </div>
 
+<!-- My Routes Screen -->
+<div class="screen" id="screenMyRoutes">
+    <div class="my-routes">
+        <h2>My Routes</h2>
+        <p>Select a route to start or resume.</p>
+        <div id="myRoutesList"></div>
+        <div id="myRoutesLoading" class="loading" style="display:none;"><div class="spinner"></div> Loading routes...</div>
+        <div class="my-routes-footer">
+            <a href="#" onclick="showScreen('screenRoute'); return false;">Enter route code manually</a>
+        </div>
+    </div>
+</div>
+
 <!-- Route Entry Screen -->
 <div class="screen" id="screenRoute">
     <div class="route-entry">
-        <h2>Start a Route</h2>
-        <p>Enter the route code from your dispatch sheet.</p>
+        <h2>Enter Route Code</h2>
+        <p>Type the route code from your dispatch sheet.</p>
         <div class="input-group">
             <label>Route Code</label>
             <input type="text" id="routeInput" placeholder="e.g. CTG-LAXI-20260702-41">
         </div>
         <button class="btn-primary" onclick="handleStartRoute()">Start Route</button>
         <div id="routeLoading" class="loading" style="display:none;"><div class="spinner"></div> Loading route...</div>
+        <div class="my-routes-footer">
+            <a href="#" onclick="loadMyRoutes(); return false;">Back to my routes</a>
+        </div>
     </div>
 </div>
 

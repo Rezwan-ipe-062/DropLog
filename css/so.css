@@ -119,6 +119,34 @@ body {
 }
 
 /* Route Entry */
+/* My Routes list */
+.my-routes { padding-top: 16px; }
+.my-routes h2 { font-size: 20px; margin-bottom: 4px; }
+.my-routes > p { color: var(--gray-500); font-size: 14px; margin-bottom: 16px; }
+.route-card {
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.route-card:active { border-color: var(--syn-blue); }
+.route-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.route-card-header h3 { font-size: 15px; font-weight: 600; }
+.route-card-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+.route-card-status.pending { background: var(--transit-yellow-light); color: var(--transit-yellow); }
+.route-card-status.in_transit { background: var(--syn-blue-light); color: var(--syn-blue); }
+.route-card-meta { font-size: 13px; color: var(--gray-500); display: flex; gap: 16px; flex-wrap: wrap; }
+.route-card-meta span { display: flex; align-items: center; gap: 4px; }
+.route-card-progress { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+.route-card-progress .progress-bar { flex: 1; height: 6px; }
+.route-card-progress .progress-fill { height: 6px; }
+.route-card-progress span { font-size: 11px; color: var(--gray-500); }
+.my-routes-footer { margin-top: 20px; text-align: center; }
+.my-routes-footer a { color: var(--syn-blue); font-size: 14px; text-decoration: none; }
+
 .route-entry { padding-top: 24px; }
 .route-entry h2 { font-size: 20px; margin-bottom: 4px; }
 .route-entry p { color: var(--gray-500); font-size: 14px; margin-bottom: 24px; }

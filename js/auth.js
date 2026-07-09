@@ -31,7 +31,7 @@ async function handleLogin() {
         document.getElementById('userBadge').textContent = (data.name || empId) + ' [' + (data.warehouse || '?') + ']';
         localStorage.setItem('droplog_so', JSON.stringify({ id: data.id, name: data.name, user_id: data.user_id, warehouse: data.warehouse }));
         showToast('Signed in', 'success');
-        showScreen('screenRoute');
+        loadMyRoutes();
     } catch (e) {
         console.error('handleLogin:', e);
         showToast(e.message || 'Something went wrong', 'error');
@@ -65,7 +65,7 @@ async function checkSession() {
         }
         currentUser = data;
         document.getElementById('userBadge').textContent = (data.name || '') + ' [' + (data.warehouse || '?') + ']';
-        showScreen('screenRoute');
+        loadMyRoutes();
     } catch (e) {
         localStorage.removeItem('droplog_so');
         showScreen('screenLogin');

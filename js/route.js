@@ -6,6 +6,108 @@ let stopsData = [];
 let productsData = {};
 let routeStartTime = null;
 
+async function loadMyRoutes() {
+    if (!sb || !currentUser) { showScreen('screenLogin'); return; }
+
+    document.getElementById('myRoutesList').innerHTML = '';
+    document.getElementById('myRoutesLoading').style.display = 'block';
+    showScreen('screenMyRoutes');
+
+    try {
+        const { data, error } = await sb
+            .from('routes')
+            .select('id, route_code, route_name, district, vehicle_number, status, total_stops, completed_stops, failed_stops')
+            .eq('assigned_so_id', currentUser.id)
+            .in('status', ['pending', 'in_transit'])
+            .order('created_at', { ascending: false });
+
+        document.getElementById('myRoutesLoading').style.display = 'none';
+
+        if (error) { showToast('Error loading routes', 'error'); return; }
+
+        const container = document.getElementById('myRoutesList');
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="empty-text" style="margin-top:40px;">No routes assigned to you.</div>';
+            return;
+        }
+
+        container.innerHTML = data.map(r => {
+            const isInTransit = r.status === 'in_transit';
+            const done = (r.completed_stops || 0) + (r.failed_stops || 0);
+            const pct = r.total_stops > 0 ? Math.round((done / r.total_stops) * 100) : 0;
+
+            return '<div class="route-card" onclick="handleRouteSelect(\'' + r.id + '\', ' + isInTransit + ')">' +
+                '<div class="route-card-header">' +
+                '<h3>' + escapeHtml(r.route_name || r.route_code) + '</h3>' +
+                '<span class="route-card-status ' + r.status + '">' + (isInTransit ? 'In Transit' : 'Pending') + '</span>' +
+                '</div>' +
+                '<div class="route-card-meta">' +
+                '<span>' + escapeHtml(r.district || '') + '</span>' +
+                '<span>' + escapeHtml(r.vehicle_number || '') + '</span>' +
+                '<span>' + done + '/' + (r.total_stops || 0) + ' stops</span>' +
+                '</div>' +
+                (isInTransit ? '<div class="route-card-progress"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span>' + pct + '%</span></div>' : '') +
+                '</div>';
+        }).join('');
+    } catch (e) {
+        console.error('loadMyRoutes:', e);
+        document.getElementById('myRoutesLoading').style.display = 'none';
+        showToast(e.message || 'Something went wrong', 'error');
+    }
+}
+
+async function handleRouteSelect(routeId, isInTransit) {
+    try {
+        if (!sb) return;
+
+        const { data: route, error } = await sb
+            .from('routes')
+            .select('*')
+            .eq('id', routeId)
+            .single();
+
+        if (error || !route) { showToast('Route not found', 'error'); return; }
+
+        routeData = route;
+
+        const { data: stops } = await sb
+            .from('route_stops')
+            .select('*')
+            .eq('route_id', route.id)
+            .order('stop_sequence');
+
+        stopsData = stops || [];
+
+        if (stopsData.length > 0) {
+            const stopIds = stopsData.map(s => s.id);
+            const { data: products } = await sb
+                .from('stop_products')
+                .select('*')
+                .in('route_stop_id', stopIds);
+
+            productsData = {};
+            (products || []).forEach(p => {
+                if (!productsData[p.route_stop_id]) productsData[p.route_stop_id] = [];
+                productsData[p.route_stop_id].push(p);
+            });
+        }
+
+        if (isInTransit) {
+            routeStartTime = routeData.started_at ? new Date(routeData.started_at) : new Date();
+            renderRouteScreen();
+            showScreen('screenStops');
+            showToast('Route resumed', 'success');
+        } else {
+            renderStartScreen();
+            showScreen('screenStart');
+        }
+    } catch (e) {
+        console.error('handleRouteSelect:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
+}
+
 async function handleStartRoute() {
     try {
         const code = document.getElementById('routeInput').value.trim();
