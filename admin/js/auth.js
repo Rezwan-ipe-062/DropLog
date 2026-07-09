@@ -14,13 +14,8 @@ function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
 
-    // Set admin name
     const nameEl = document.getElementById('adminName');
-    if (nameEl) nameEl.textContent = currentAdmin.name || 'Admin';
-
-    // Set warehouse dropdown to current
-    const whSelect = document.querySelector('.wh-select');
-    if (whSelect) whSelect.value = ACTIVE_WAREHOUSE_CODE;
+    if (nameEl) nameEl.textContent = ACTIVE_WAREHOUSE_CODE + ' - ' + (currentAdmin.name || 'Admin');
 
     // Load default tab
     switchTab('dashboard');
