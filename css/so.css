@@ -211,6 +211,24 @@ body {
 .stop-detail { font-size: 12px; color: var(--gray-500); }
 .stop-time { font-size: 11px; color: var(--syn-green-dark); font-weight: 500; margin-top: 3px; }
 
+/* Drag Handle */
+.drag-handle {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; flex-shrink: 0; cursor: grab; padding: 6px 0;
+    color: var(--gray-400); touch-action: none;
+}
+.drag-handle:active { cursor: grabbing; }
+.sortable-ghost { opacity: 0.4; }
+.sortable-chosen { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.sortable-drag { opacity: 0.9; }
+
+.btn-save-order {
+    width: 100%; padding: 14px; margin: 12px 0 16px;
+    background: var(--syn-blue); color: white; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.btn-save-order:disabled { opacity: 0.6; }
+
 /* FAB */
 .fab-issue {
     position: fixed; bottom: 24px; right: 20px; height: 40px; padding: 0 16px;

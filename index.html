@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>DropLog - Syngenta</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
     <link rel="stylesheet" href="css/so.css?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#00457C">
@@ -147,6 +148,8 @@
 
     <div class="section-label">Delivery Stops</div>
     <ul class="stop-list" id="stopList"></ul>
+
+    <button class="btn-save-order" id="btnSaveOrder" style="display:none;" onclick="saveStopOrder()">Save Stop Order</button>
 
     <button class="fab-issue" onclick="showIssueScreen()">! Report Issue</button>
 </div>

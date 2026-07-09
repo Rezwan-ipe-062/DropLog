@@ -53,4 +53,8 @@ function showScreen(id) {
     var header = document.getElementById('appHeader');
     header.style.display = (id === 'screenLogin') ? 'none' : 'block';
     window.scrollTo(0, 0);
+    if (id !== 'screenStops') {
+        var btn = document.getElementById('btnSaveOrder');
+        if (btn) { btn.style.display = 'none'; btn.textContent = 'Save Stop Order'; btn.disabled = false; }
+    }
 }

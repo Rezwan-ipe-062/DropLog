@@ -280,9 +280,10 @@ function renderStopList() {
         const totalQty = prods.reduce((s, p) => s + (p.quantity || 0), 0);
         const timeStr = stop.delivered_at ? '<div class="stop-time">' + formatTime(stop.delivered_at) + '</div>' : '';
 
-        html += '<li class="stop-item ' + statusClass + '" onclick="openDelivery(' + i + ')">';
-        html += '<div class="stop-indicator ' + statusClass + '">' + indicator + '</div>';
-        html += '<div class="stop-info">';
+        html += '<li class="stop-item ' + statusClass + '" data-index="' + i + '">';
+        html += '<div class="drag-handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>';
+        html += '<div class="stop-indicator ' + statusClass + '" onclick="openDelivery(' + i + ')">' + indicator + '</div>';
+        html += '<div class="stop-info" onclick="openDelivery(' + i + ')">';
         html += '<div class="stop-name">' + escapeHtml(stop.customer_name) + '</div>';
         html += '<div class="stop-detail">' + escapeHtml((stop.address || '').substring(0, 40)) + ' - ' + totalQty + ' units</div>';
         html += timeStr;
@@ -290,6 +291,21 @@ function renderStopList() {
     });
 
     list.innerHTML = html;
+
+    // Init SortableJS for drag & drop reorder
+    if (typeof Sortable !== 'undefined' && !list.Sortable) {
+        Sortable.create(list, {
+            handle: '.drag-handle',
+            animation: 200,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            onEnd: function() {
+                document.getElementById('btnSaveOrder').style.display = 'block';
+            }
+        });
+        list.Sortable = true;
+    }
 
     // Update progress
     const pct = stopsData.length > 0 ? Math.round((completed / stopsData.length) * 100) : 0;
@@ -300,5 +316,53 @@ function renderStopList() {
     // Check if all done
     if (stopsData.length > 0 && stopsData.every(s => s.status !== 'pending')) {
         setTimeout(showRouteComplete, 500);
+    }
+}
+
+async function saveStopOrder() {
+    try {
+        const list = document.getElementById('stopList');
+        const items = list.querySelectorAll('.stop-item');
+        const btn = document.getElementById('btnSaveOrder');
+        btn.textContent = 'Saving...';
+        btn.disabled = true;
+
+        const updates = [];
+        items.forEach((li, idx) => {
+            const oldIdx = parseInt(li.dataset.index);
+            if (oldIdx !== idx) {
+                updates.push({ id: stopsData[oldIdx].id, stop_sequence: idx + 1 });
+            }
+        });
+
+        if (updates.length === 0) {
+            btn.style.display = 'none';
+            btn.textContent = 'Save Stop Order';
+            btn.disabled = false;
+            return;
+        }
+
+        // Update local array
+        const newOrder = [];
+        items.forEach(li => {
+            const oldIdx = parseInt(li.dataset.index);
+            newOrder.push(stopsData[oldIdx]);
+        });
+        stopsData = newOrder;
+
+        // Persist to database
+        for (const u of updates) {
+            await sb.from('route_stops').update({ stop_sequence: u.stop_sequence }).eq('id', u.id);
+        }
+
+        btn.style.display = 'none';
+        btn.textContent = 'Save Stop Order';
+        btn.disabled = false;
+
+        renderRouteScreen();
+        showToast('Stop order saved', 'success');
+    } catch (e) {
+        console.error('saveStopOrder:', e);
+        showToast(e.message || 'Failed to save order', 'error');
     }
 }
