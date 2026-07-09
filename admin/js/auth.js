@@ -1,6 +1,7 @@
 // ============================================================
-// DropLog Admin — Authentication Module v3 (Multi-Warehouse)
+// DropLog Admin â€” Authentication Module
 // ============================================================
+// Handles: admin login, session check, logout
 
 let currentAdmin = null;
 
@@ -13,21 +14,15 @@ function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
 
-    // Warehouse-aware header
-    var wh = getActiveWarehouse();
-    var whLabel = getWarehouseLabel();
-    document.getElementById('adminName').textContent = (currentAdmin.name || 'Admin') + ' — ' + whLabel;
+    // Set admin name
+    const nameEl = document.getElementById('adminName');
+    if (nameEl) nameEl.textContent = currentAdmin.name || 'Admin';
 
-    // Add warehouse tag to header-right
-    var el = document.querySelector('.header-right .wh-tag');
-    if (!el) {
-        el = document.createElement('span');
-        el.className = 'wh-tag';
-        el.style.cssText = 'background:rgba(255,255,255,0.12);padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;';
-        document.querySelector('.header-right').insertBefore(el, document.querySelector('.btn-logout'));
-    }
-    el.textContent = whLabel;
+    // Set warehouse dropdown to current
+    const whSelect = document.querySelector('.wh-select');
+    if (whSelect) whSelect.value = ACTIVE_WAREHOUSE_CODE;
 
+    // Load default tab
     switchTab('dashboard');
 }
 
@@ -38,9 +33,6 @@ async function handleAdminLogin() {
     if (!userId) { showToast('Enter Admin ID', 'warning'); return; }
     if (!pin) { showToast('Enter password', 'warning'); return; }
     if (!sb) { showToast('Connecting...', 'warning'); return; }
-
-    // Set warehouse from URL param (or default)
-    setActiveWarehouse(getActiveWarehouse());
 
     const { data, error } = await sb
         .from('users')
@@ -68,37 +60,24 @@ function handleLogout() {
     showToast('Signed out', 'info');
 }
 
-async function checkSession() {
+// Check saved session on load
+function checkSession() {
     const saved = localStorage.getItem('droplog_admin');
-    if (!saved) { showLoginScreen(); return; }
-
-    try {
-        const parsed = JSON.parse(saved);
-
-        const { data, error } = await sb
-            .from('users')
-            .select('id, name, role, user_id')
-            .eq('id', parsed.id)
-            .in('role', ['admin', 'csd'])
-            .single();
-
-        if (error || !data) {
-            localStorage.removeItem('droplog_admin');
+    if (saved) {
+        try {
+            currentAdmin = JSON.parse(saved);
+            showMainApp();
+        } catch (e) {
             showLoginScreen();
-            return;
         }
-
-        currentAdmin = data;
-        // Initialize warehouse from URL param
-        setActiveWarehouse(getActiveWarehouse());
-        showMainApp();
-    } catch (e) {
-        localStorage.removeItem('droplog_admin');
+    } else {
         showLoginScreen();
     }
 }
 
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Wait for Supabase
     const check = setInterval(() => {
         if (sb) {
             clearInterval(check);

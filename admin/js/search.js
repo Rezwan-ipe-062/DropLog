@@ -20,14 +20,14 @@ async function executeSearch(query) {
     const results = document.getElementById('searchResults');
     results.innerHTML = '<p class="searching">Searching...</p>';
 
-    var wh = getActiveWarehouse();
+    const wh = getWarehouseName();
 
     // Search in route_stops (covers customer, DO, GD)
     const { data: stops } = await sb
         .from('route_stops')
-        .select('*, routes!inner(route_code, route_name, status, warehouse)')
+        .select('*, routes!inner(route_code, route_name, status)')
         .or('customer_name.ilike.%' + query + '%,delivery_documents.cs.{' + query + '}')
-        .eq('routes.warehouse', wh)
+        .eq('routes.plant_name', wh)
         .limit(20);
 
     // Search in available_gds
@@ -35,7 +35,7 @@ async function executeSearch(query) {
         .from('available_gds')
         .select('*')
         .or('group_delivery_number.ilike.%' + query + '%,district.ilike.%' + query + '%')
-        .eq('warehouse', wh)
+        .eq('plant_name', wh)
         .limit(10);
 
     let html = '';

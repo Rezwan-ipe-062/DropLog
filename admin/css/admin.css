@@ -62,6 +62,20 @@ body {
 }
 .btn-logout:hover { background: rgba(255,255,255,0.2); }
 
+.wh-select {
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+}
+.wh-select option { color: var(--gray-900); background: white; }
+.wh-select:hover { background: rgba(255,255,255,0.25); }
+
 /* --- Login --- */
 .login-screen {
     display: flex;
@@ -418,26 +432,6 @@ tbody tr:hover { background: var(--gray-100); }
 .rd-issue-card strong { color: var(--red); font-size: 14px; }
 .rd-issue-card p { font-size: 13px; color: var(--gray-700); margin-top: 4px; }
 .rd-issue-time { font-size: 11px; color: var(--gray-500); }
-
-/* --- Inline Editing --- */
-.editable { cursor: pointer; border-bottom: 1px dashed var(--gray-300); }
-.editable:hover { border-bottom-color: var(--syn-blue); background: var(--syn-blue-light); border-radius: 2px; }
-.inline-edit-input {
-    padding: 4px 6px; border: 1.5px solid var(--syn-blue); border-radius: 4px;
-    font-size: inherit; font-family: inherit; background: white; outline: none;
-}
-
-/* --- Phone Validation --- */
-.phone-badge { padding: 2px 8px; border-radius: 4px; background: var(--syn-green-light); color: var(--syn-green-dark); font-size: 12px; }
-.phone-invalid { background: #fff3e0; color: var(--orange); }
-
-/* --- Dashboard Filter Bar --- */
-.dash-filter-btn {
-    padding: 4px 12px; border: 1.5px solid var(--gray-200); border-radius: 6px;
-    font-size: 12px; font-weight: 600; cursor: pointer; background: white; color: var(--gray-500);
-}
-.dash-filter-btn:hover { border-color: var(--syn-blue); color: var(--syn-blue); }
-.dash-filter-btn.active { background: var(--syn-blue); color: white; border-color: var(--syn-blue); }
 
 /* Download Report Button */
 .btn-download-report {
