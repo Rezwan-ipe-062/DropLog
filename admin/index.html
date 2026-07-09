@@ -34,6 +34,7 @@
             <span style="opacity:0.5;font-size:12px;">Admin</span>
         </div>
         <div class="header-right">
+            <span class="admin-name" id="adminName" style="font-size:13px;opacity:0.8;"></span>
             <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
         </div>
     </div>
@@ -46,6 +47,7 @@
         <button class="nav-tab" onclick="switchTab('contacts')">Contacts</button>
         <button class="nav-tab" onclick="switchTab('users')">Supply Officers</button>
         <button class="nav-tab" onclick="switchTab('search')">Search</button>
+        <button class="nav-tab" onclick="switchTab('fleet')">Fleet & Routes</button>
         <button class="nav-tab" onclick="switchTab('notifications')">Notifications</button>
     </nav>
 
@@ -83,11 +85,31 @@
             </div>
         </div>
 
+        <!-- Fleet & Routes Panel -->
+        <div class="panel" id="panel-fleet">
+            <div class="card">
+                <h3>Fleet & Routes Management</h3>
+                <div class="fleet-tabs" style="display:flex;gap:4px;margin-bottom:16px;">
+                    <button class="nav-tab active" onclick="switchFleetTab('vehicles', this)">Vehicles</button>
+                    <button class="nav-tab" onclick="switchFleetTab('vendors', this)">Vendors</button>
+                    <button class="nav-tab" onclick="switchFleetTab('routes', this)">Route Templates</button>
+                    <button class="nav-tab" onclick="switchFleetTab('issue-types', this)">Issue Types</button>
+                </div>
+                <div id="fleetVehiclesContent"><p class="loading">Loading vehicles...</p></div>
+                <div id="fleetVendorsContent" style="display:none;"><p class="loading">Loading vendors...</p></div>
+                <div id="fleetRoutesContent" style="display:none;"><p class="loading">Loading route templates...</p></div>
+                <div id="fleetIssueTypesContent" style="display:none;"><p class="loading">Loading issue types...</p></div>
+            </div>
+        </div>
+
         <!-- Upload Panel -->
         <div class="panel" id="panel-upload">
             <div class="card">
                 <h3>Upload SAP Export</h3>
-                <p style="margin-bottom:14px;">Upload the daily SAP Group Delivery export (.xls or .xlsx). The parser reads the "Data" sheet automatically.</p>
+                <p style="margin-bottom:14px;">Upload the daily SAP Group Delivery export (.xls or .xlsx). Use the <strong>standard template</strong> (13 columns) for best results, or upload the full SAP export.</p>
+                <div style="display:flex;gap:10px;margin-bottom:14px;">
+                    <a href="DropLog_Upload_Template.xlsx" class="btn-small" style="display:inline-block;text-decoration:none;background:var(--syn-blue);padding:9px 16px;border-radius:6px;color:white;font-size:13px;font-weight:600;">Download Template</a>
+                </div>
                 <div class="upload-area">
                     <input type="file" accept=".xlsx,.xls,.csv" onchange="handleSAPUpload(event)">
                     <p> Click or drag file here</p>
@@ -105,25 +127,37 @@
         <div class="panel" id="panel-contacts">
             <div class="card">
                 <h3>Customer Contacts <span id="contactCount" style="font-size:12px;color:var(--gray-500);font-weight:400;"></span></h3>
-                <p style="margin-bottom:14px;">Upload customer list with phone/email for delivery notifications.</p>
+                <p style="margin-bottom:14px;">Upload customer list with phone for delivery notifications.</p>
                 <div class="upload-area" style="margin-bottom:16px;">
                     <input type="file" accept=".xlsx,.xls,.csv" onchange="handleContactsUpload(event)">
-                    <p>Upload contacts file (BP ID, Name, Phone, Email)</p>
+                    <p>Upload contacts file (BP ID, Name, Phone, District)</p>
                 </div>
                 <div id="contactUploadStatus" class="upload-status"></div>
 
+                <!-- Search + Bulk + Add -->
+                <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+                    <input type="text" id="contactSearch" placeholder="Search contacts by name, phone, BP ID..." style="flex:2;min-width:200px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;" oninput="filterContacts(this.value)">
+                    <button class="btn-danger" id="btnDeleteSelected" style="display:none;" onclick="deleteSelectedContacts()">Delete Selected (<span id="selectedCount">0</span>)</button>
+                </div>
+
                 <!-- Manual add -->
                 <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
+                    <input type="text" id="addContactBPID" placeholder="BP ID" style="width:90px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
                     <input type="text" id="addContactName" placeholder="Customer Name" style="flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="tel" id="addContactPhone" placeholder="Phone" style="width:130px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="email" id="addContactEmail" placeholder="Email" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="tel" id="addContactPhone" placeholder="Phone (01XXXXXXXXX)" style="width:150px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="text" id="addContactDistrict" placeholder="District" style="width:110px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
                     <button class="btn-small" onclick="addContact()">+ Add</button>
                 </div>
 
+                <div style="overflow-x:auto;">
                 <table>
-                    <thead><tr><th>BP ID</th><th>Customer</th><th>Phone</th><th>Email</th><th>District</th><th></th></tr></thead>
+                    <thead><tr>
+                        <th style="width:32px;"><input type="checkbox" id="selectAllContacts" onchange="toggleSelectAllContacts(this)"></th>
+                        <th>BP ID</th><th>Customer</th><th>Phone</th><th>District</th><th></th><th></th>
+                    </tr></thead>
                     <tbody id="contactsBody"></tbody>
                 </table>
+                </div>
                 <p id="noContacts" class="empty-text">No contacts yet.</p>
             </div>
         </div>
@@ -140,7 +174,7 @@
                     <button class="btn-small" onclick="addUser()">+ Add SO</button>
                 </div>
                 <table>
-                    <thead><tr><th>Name</th><th>Employee ID</th><th>PIN</th><th>Warehouse</th><th>Phone</th><th></th></tr></thead>
+                    <thead><tr><th>Name</th><th>Employee ID</th><th>Phone</th><th>Warehouse</th><th></th></tr></thead>
                     <tbody id="usersBody"></tbody>
                 </table>
                 <p id="noUsers" class="empty-text">No Supply Officers yet.</p>
@@ -192,6 +226,7 @@
 <script src="js/users.js"></script>
 <script src="js/search.js"></script>
 <script src="js/notifications.js"></script>
+<script src="js/fleet.js"></script>
 <script src="js/report.js"></script>
 
 <!-- Tab switching (thin orchestrator) -->
@@ -210,6 +245,7 @@ function switchTab(tabName) {
     switch (tabName) {
         case 'dashboard': loadDashboard(); break;
         case 'route-builder': loadAvailableGDs(); break;
+        case 'fleet': loadFleetData(); break;
         case 'contacts': loadContacts(); break;
         case 'users': loadUsers(); break;
         case 'notifications': loadNotifications(); break;

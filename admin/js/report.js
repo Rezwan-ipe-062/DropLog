@@ -8,6 +8,24 @@ var jsPDFScript = document.createElement('script');
 jsPDFScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
 document.head.appendChild(jsPDFScript);
 
+// Decode Google/OSRM encoded polyline format
+function decodePolyline(encoded) {
+    var points = [];
+    var index = 0, lat = 0, lng = 0;
+    while (index < encoded.length) {
+        var b, shift = 0, result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1F) << shift; shift += 5; } while (b >= 0x20);
+        var dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
+        lat += dlat;
+        shift = 0; result = 0;
+        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1F) << shift; shift += 5; } while (b >= 0x20);
+        var dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
+        lng += dlng;
+        points.push([lat * 1e-5, lng * 1e-5]);
+    }
+    return points;
+}
+
 async function generateRouteReport(routeId) {
     if (typeof window.jspdf === 'undefined') {
         showToast('PDF library loading, try again', 'warning');
@@ -23,6 +41,21 @@ async function generateRouteReport(routeId) {
 
     var { data: issues } = await sb.from('issues').select('*').eq('route_id', routeId).order('reported_at');
     issues = issues || [];
+
+    // OSRM route data (free, no API key)
+    var osrmRoute = null;
+    var gpsStops = (stops || []).filter(function(s) { return s.gps_lat && s.gps_lng; });
+    if (gpsStops.length >= 2) {
+        try {
+            var coords = gpsStops.map(function(s) { return s.gps_lng + ',' + s.gps_lat; }).join(';');
+            var url = 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&alternatives=false&steps=false';
+            var resp = await fetch(url);
+            var data = await resp.json();
+            if (data && data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                osrmRoute = data.routes[0];
+            }
+        } catch (e) { /* OSRM failed, proceed without */ }
+    }
 
     var soName = '--';
     if (route.assigned_so_id) {
@@ -388,6 +421,144 @@ async function generateRouteReport(routeId) {
         });
     }
 
+    // --- Route Map Sketch (from OSRM) ---
+    if (osrmRoute && gpsStops.length >= 2) {
+        y += 6;
+        if (y > 210) { doc.addPage(); y = M; }
+
+        // Draw route sketch on a canvas
+        var canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 300;
+        var ctx = canvas.getContext('2d');
+
+        // Decode OSRM polyline
+        var poly = osrmRoute.geometry;
+        var points = [];
+        if (typeof poly === 'string') {
+            // OSRM returns encoded polyline string
+            try {
+                var decoded = decodePolyline(poly);
+                points = decoded;
+            } catch(e) { points = []; }
+        }
+        if (points.length === 0 || !Array.isArray(points)) {
+            // Fall back to stop-to-stop straight lines
+            points = gpsStops.map(function(s) { return [s.gps_lat, s.gps_lng]; });
+        }
+
+        // Draw background
+        ctx.fillStyle = '#f4f5f7';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Margins
+        var pad = 40;
+        var drawW = canvas.width - pad * 2;
+        var drawH = canvas.height - pad * 2;
+
+        // Find bounds
+        var minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+        points.forEach(function(p) {
+            if (p[0] < minLat) minLat = p[0];
+            if (p[0] > maxLat) maxLat = p[0];
+            if (p[1] < minLng) minLng = p[1];
+            if (p[1] > maxLng) maxLng = p[1];
+        });
+        var latRange = maxLat - minLat || 0.01;
+        var lngRange = maxLng - minLng || 0.01;
+        // Add 10% padding
+        minLat -= latRange * 0.1; maxLat += latRange * 0.1;
+        minLng -= lngRange * 0.1; maxLng += lngRange * 0.1;
+        latRange = maxLat - minLat; lngRange = maxLng - minLng;
+
+        function toCanvas(lat, lng) {
+            var x = pad + ((lng - minLng) / lngRange) * drawW;
+            var y2 = pad + ((maxLat - lat) / latRange) * drawH;
+            return [x, y2];
+        }
+
+        // Draw route line
+        ctx.beginPath();
+        ctx.strokeStyle = '#00457C';
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        points.forEach(function(p, i) {
+            var c = toCanvas(p[0], p[1]);
+            if (i === 0) ctx.moveTo(c[0], c[1]);
+            else ctx.lineTo(c[0], c[1]);
+        });
+        ctx.stroke();
+
+        // Draw stop markers
+        gpsStops.forEach(function(s, i) {
+            var c = toCanvas(s.gps_lat, s.gps_lng);
+            ctx.beginPath();
+            ctx.arc(c[0], c[1], 8, 0, Math.PI * 2);
+            // Color by status
+            if (s.status === 'delivered') ctx.fillStyle = '#00A94F';
+            else if (s.status === 'failed') ctx.fillStyle = '#b71c1c';
+            else if (s.status === 'partial') ctx.fillStyle = '#e65100';
+            else ctx.fillStyle = '#6b7080';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Number label
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(i + 1), c[0], c[1]);
+
+            // Name label below marker
+            ctx.fillStyle = '#1a1d23';
+            ctx.font = '9px sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText(s.customer_name.substring(0, 16), c[0], c[1] + 12);
+        });
+
+        // Legend
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#666';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Distance: ' + ((osrmRoute.distance / 1000).toFixed(1) + ' km'), pad, canvas.height - pad + 8);
+        ctx.fillText('Duration: ~' + Math.round(osrmRoute.duration / 60) + ' min', pad + 100, canvas.height - pad + 8);
+        ctx.fillText('Stops: ' + gpsStops.length + ' GPS points', pad + 220, canvas.height - pad + 8);
+
+        // Embed canvas as PNG in PDF
+        var imgData = canvas.toDataURL('image/png');
+
+        // Add route map section
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Route Map (OSRM Driving Route)', tableX, y);
+        y += 3;
+
+        // Calculate the height for the image to fit in the PDF (maintain aspect ratio)
+        var imgW = tableW;
+        var imgH = (canvas.height / canvas.width) * imgW;
+        // Cap height
+        if (imgH > 80) { imgH = 80; }
+
+        doc.addImage(imgData, 'PNG', tableX, y, imgW, imgH);
+        y += imgH + 4;
+
+        // ODOMETER vs OSRM comparison
+        var osrmKm = (osrmRoute.distance / 1000).toFixed(1);
+        var odometerKm = (route.initial_km_reading && route.final_km_reading && route.driven_km) ? route.driven_km : null;
+        if (odometerKm) {
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'italic');
+            doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+            doc.text('Odometer: ' + odometerKm + ' km  |  OSRM Route: ' + osrmKm + ' km  |  Diff: ' + (odometerKm - parseFloat(osrmKm)).toFixed(1) + ' km', tableX, y);
+            y += 4;
+            doc.setTextColor(0, 0, 0);
+        }
+    }
+
     // --- Route Performance Box ---
     y += 10;
     if (y > 240) { doc.addPage(); y = M; }
@@ -426,8 +597,13 @@ async function generateRouteReport(routeId) {
     // Col 3
     doc.text('KM per Stop:', tableX + 2*perfCol + 4, perfY);
     doc.setFont('helvetica', 'bold');
-    var kmPerStop = (route.initial_km_reading && route.final_km_reading && route.driven_km && stops.length > 0) ? (route.driven_km / stops.length).toFixed(1) + ' km' : '--';
-    doc.text(kmPerStop, tableX + 2*perfCol + 4, perfY + 5);
+    if (osrmRoute) {
+        var osrmKmPerStop = (osrmRoute.distance / 1000 / stops.length).toFixed(1);
+        doc.text(osrmKmPerStop + ' km', tableX + 2*perfCol + 4, perfY + 5);
+    } else {
+        var kmPerStop = (route.initial_km_reading && route.final_km_reading && route.driven_km && stops.length > 0) ? (route.driven_km / stops.length).toFixed(1) + ' km' : '--';
+        doc.text(kmPerStop, tableX + 2*perfCol + 4, perfY + 5);
+    }
     doc.setFont('helvetica', 'normal');
 
     // Row 2 of performance

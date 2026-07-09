@@ -1,7 +1,7 @@
 // ============================================================
-// DropLog Admin - Notifications Module
+// DropLog Admin - Notifications Module v2
 // ============================================================
-// Handles: viewing notification log, status tracking
+// Only shows Issues + System Alerts (route events stay on Dashboard)
 
 async function loadNotifications() {
     if (!sb) return;
@@ -9,6 +9,7 @@ async function loadNotifications() {
     const { data } = await sb
         .from('notifications')
         .select('*')
+        .in('message_type', ['issue_alert', 'system_alert'])
         .order('triggered_at', { ascending: false })
         .limit(50);
 
@@ -23,11 +24,9 @@ async function loadNotifications() {
 
     empty.style.display = 'none';
     tbody.innerHTML = data.map(n => {
-        const typeClass = n.message_type === 'route_started' ? 'type-start' : 
-                         n.message_type === 'delivery_done' ? 'type-done' :
-                         n.message_type === 'issue_alert' ? 'type-issue' : 'type-complete';
-        const statusClass = n.status === 'sent' ? 'noti-sent' : 
-                           n.status === 'delivered' ? 'noti-delivered' : 
+        const typeClass = n.message_type === 'issue_alert' ? 'type-issue' : 'type-complete';
+        const statusClass = n.status === 'sent' ? 'noti-sent' :
+                           n.status === 'delivered' ? 'noti-delivered' :
                            n.status === 'failed' ? 'noti-failed' : 'noti-pending';
 
         return '<tr>' +

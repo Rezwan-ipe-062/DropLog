@@ -1,5 +1,5 @@
 // ============================================================
-// DropLog SO App - Route Completion
+// DropLog SO App - Route Completion v2
 // ============================================================
 
 function showRouteComplete() {
@@ -13,14 +13,15 @@ function showRouteComplete() {
     document.getElementById('summaryEnd').textContent = formatTime(endTime);
 
     const ms = endTime - routeStartTime;
-    document.getElementById('summaryDuration').textContent = 
+    document.getElementById('summaryDuration').textContent =
         Math.floor(ms / 3600000) + 'h ' + Math.floor((ms % 3600000) / 60000) + 'm';
 
     showScreen('screenComplete');
 }
 
 async function handleFinish() {
-    // Get final KM and expense from the form
+    if (!confirm('Submit final data and complete this route?')) return;
+
     var finalKm = document.getElementById('completeFinalKm').value.trim();
     var expense = document.getElementById('completeExpense').value.trim();
 
@@ -29,7 +30,6 @@ async function handleFinish() {
     var finalKmNum = Number(finalKm) || 0;
     var expenseNum = Number(expense) || 0;
 
-    // Fetch fresh route data to get initial_km (in case local is stale)
     var freshRoute = routeData;
     if (sb) {
         var { data: fr } = await sb.from('routes').select('initial_km_reading').eq('id', routeData.id).single();
@@ -62,9 +62,8 @@ async function handleFinish() {
         performed_by: currentUser ? currentUser.id : null
     });
 
-    showToast('Route submitted', 'success');
+    showToast('Route submitted (' + drivenKm + ' km driven)', 'success');
 
-    // Reset
     setTimeout(function() {
         routeData = null;
         stopsData = [];
@@ -72,6 +71,8 @@ async function handleFinish() {
         currentStopIndex = null;
         routeStartTime = null;
         document.getElementById('routeInput').value = '';
+        document.getElementById('completeFinalKm').value = '';
+        document.getElementById('completeExpense').value = '';
         showScreen('screenRoute');
     }, 1500);
 }

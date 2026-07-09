@@ -1,17 +1,18 @@
 // ============================================================
-// DropLog Admin - Route Builder Module (FIXED v2)
+// DropLog Admin - Route Builder Module v3
 // ============================================================
 
 let availableGDs = [];
 let isCreatingRoute = false;
 let selectedGDs = new Set();
 let soList = [];
-let stopsCache = {}; // gd_id > stops array
+let fleetVehicles = [];
+let vendors = [];
+let stopsCache = {};
 
 async function loadAvailableGDs() {
     if (!sb) return;
 
-    // Simple query - no JOIN (avoids relationship issues)
     const { data: gds, error } = await sb
         .from('available_gds')
         .select('*')
@@ -25,9 +26,7 @@ async function loadAvailableGDs() {
     }
 
     availableGDs = gds || [];
-    console.log('Loaded GDs:', availableGDs.length);
 
-    // Load stops separately
     if (availableGDs.length > 0) {
         const gdIds = availableGDs.map(g => g.id);
         const { data: stops } = await sb
@@ -35,19 +34,17 @@ async function loadAvailableGDs() {
             .select('*')
             .in('gd_id', gdIds);
 
-        // Build cache: gd_id > [stops]
         stopsCache = {};
         (stops || []).forEach(s => {
             if (!stopsCache[s.gd_id]) stopsCache[s.gd_id] = [];
             stopsCache[s.gd_id].push(s);
         });
-        console.log('Loaded stops:', (stops || []).length);
     }
 
     selectedGDs.clear();
+    await loadFleetData();
     renderRouteBuilder();
 
-    // Load SO list
     const { data: users } = await sb
         .from('users')
         .select('*')
@@ -75,7 +72,6 @@ function renderRouteBuilder() {
 
     let html = '';
 
-    // Auto-detected routes
     if (multiStop.length > 0) {
         html += '<div class="rb-section">';
         html += '<h3 class="rb-section-title">Auto-Detected Routes <span class="badge">' + multiStop.length + '</span></h3>';
@@ -84,7 +80,6 @@ function renderRouteBuilder() {
         html += '</div>';
     }
 
-    // Suggested bundles
     if (bundles.length > 0) {
         html += '<div class="rb-section">';
         html += '<h3 class="rb-section-title">Suggested Bundles <span class="badge">' + bundles.length + '</span></h3>';
@@ -93,7 +88,6 @@ function renderRouteBuilder() {
         html += '</div>';
     }
 
-    // Unbundled singles
     const bundledGdNums = new Set(bundles.flatMap(b => b.gds.map(g => g.group_delivery_number)));
     const unbundled = singleStop.filter(g => !bundledGdNums.has(g.group_delivery_number));
     if (unbundled.length > 0) {
@@ -103,7 +97,6 @@ function renderRouteBuilder() {
         html += '</div>';
     }
 
-    // Route creation form
     html += '<div id="routeCreateForm" class="route-create-form" style="display:none;">';
     html += renderRouteForm();
     html += '</div>';
@@ -131,7 +124,6 @@ function renderGDCard(gd) {
     html += '</div>';
     html += '</div>';
 
-    // Show customer list from stops
     if (stops.length > 0) {
         html += '<div class="gd-stops-list">';
         stops.forEach(s => {
@@ -177,9 +169,9 @@ function renderBundleCard(bundle, idx) {
 function renderRouteForm() {
     let html = '<h3>Create Route</h3>';
     html += '<div class="form-row">';
-    html += '<div class="form-group"><label>Vehicle Number</label><input type="text" id="rfVehicle" placeholder="e.g. DM AU-11-1917"></div>';
-    html += '<div class="form-group"><label>Vehicle Type</label><select id="rfVehicleType"><option value="cover_truck">Cover Truck</option><option value="open_truck">Open Truck</option><option value="pickup">Pickup</option></select></div>';
-    html += '<div class="form-group"><label>Vendor</label><input type="text" id="rfVendor" placeholder="e.g. Rupali Agencies"></div>';
+    html += '<div class="form-group"><label>Vehicle</label><select id="rfVehicle" onchange="onVehicleChange()"><option value="">- Select Vehicle -</option></select></div>';
+    html += '<div class="form-group"><label>Vehicle Type</label><input type="text" id="rfVehicleType" readonly style="background:var(--gray-100);"></div>';
+    html += '<div class="form-group"><label>Vendor</label><select id="rfVendor"><option value="">- Select Vendor -</option></select></div>';
     html += '</div>';
     html += '<div class="form-row">';
     html += '<div class="form-group"><label>Assign SO</label><select id="rfSO"><option value="">- Select Supply Officer -</option></select></div>';
@@ -188,6 +180,17 @@ function renderRouteForm() {
     html += '<div class="form-row"><div class="selected-summary" id="rfSummary"></div></div>';
     html += '<button class="btn-create-route" onclick="createRoute()">Create Route</button>';
     return html;
+}
+
+function onVehicleChange() {
+    const sel = document.getElementById('rfVehicle');
+    const selected = sel.options[sel.selectedIndex];
+    const typeField = document.getElementById('rfVehicleType');
+    if (selected && selected.dataset.type) {
+        typeField.value = selected.dataset.type;
+    } else {
+        typeField.value = '';
+    }
 }
 
 // ---- Selection ----
@@ -220,6 +223,30 @@ function updateRouteForm() {
     if (selectedGDs.size === 0) { form.style.display = 'none'; return; }
     form.style.display = 'block';
 
+    // Populate vehicle dropdown
+    const vehicleSelect = document.getElementById('rfVehicle');
+    if (vehicleSelect && vehicleSelect.options.length <= 1) {
+        fleetVehicles.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vehicle_number;
+            opt.textContent = v.vehicle_number + ' (' + v.vehicle_type.replace('_', ' ') + ', ' + (v.capacity_mt || '?') + ' MT)';
+            opt.dataset.type = v.vehicle_type;
+            vehicleSelect.appendChild(opt);
+        });
+    }
+
+    // Populate vendor dropdown
+    const vendorSelect = document.getElementById('rfVendor');
+    if (vendorSelect && vendorSelect.options.length <= 1) {
+        vendors.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vendor_name;
+            opt.textContent = v.vendor_name;
+            vendorSelect.appendChild(opt);
+        });
+    }
+
+    // Populate SO dropdown
     const soSelect = document.getElementById('rfSO');
     if (soSelect && soSelect.options.length <= 1) {
         soList.forEach(so => {
@@ -240,36 +267,71 @@ function updateRouteForm() {
         '<strong>Districts:</strong> ' + districts.join(', ');
 }
 
+// ---- Generate UUID-based route code ----
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+function generateRouteCode(district, date) {
+    const d = new Date(date);
+    const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
+    const distShort = (district || 'UNK').substring(0, 4).toUpperCase();
+    const shortId = generateUUID().substring(0, 6).toUpperCase();
+    var plantShort = (typeof CONFIG !== 'undefined' && CONFIG.PLANT_SHORT) ? CONFIG.PLANT_SHORT : 'CTG';
+    return plantShort + '-' + distShort + '-' + dateStr + '-' + shortId;
+}
+
 // ---- Create Route ----
 
 async function createRoute() {
     if (selectedGDs.size === 0) { showToast('Select at least one GD', 'warning'); return; }
     if (isCreatingRoute) return;
-    isCreatingRoute = true;
-    document.querySelector('.btn-create-route').disabled = true;
-    document.querySelector('.btn-create-route').textContent = 'Creating...';
 
-    const vehicle = document.getElementById('rfVehicle').value.trim();
-    const vehicleType = document.getElementById('rfVehicleType').value;
-    const vendor = document.getElementById('rfVendor').value.trim();
+    const vehicle = document.getElementById('rfVehicle').value;
     const soId = document.getElementById('rfSO').value;
+    const vendor = document.getElementById('rfVendor').value;
     const routeName = document.getElementById('rfName').value.trim();
 
-    if (!vehicle) { showToast('Enter vehicle number', 'warning'); return; }
+    if (!vehicle) { showToast('Select a vehicle', 'warning'); return; }
 
-    const selGDs = availableGDs.filter(g => selectedGDs.has(g.group_delivery_number));
-    const districts = [...new Set(selGDs.map(g => g.district))];
-    const dispatchDate = selGDs[0].posting_date || new Date().toISOString().slice(0, 10);
-    const routeCode = generateRouteCode(districts[0], dispatchDate);
-
-    // Collect stops
-    const allStops = [];
-    selGDs.forEach(gd => {
-        const stops = getStopsForGD(gd);
-        stops.forEach(s => allStops.push(s));
-    });
+    isCreatingRoute = true;
+    const btn = document.querySelector('.btn-create-route');
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
 
     try {
+        const selGDs = availableGDs.filter(g => selectedGDs.has(g.group_delivery_number));
+        const districts = [...new Set(selGDs.map(g => g.district))];
+        const dispatchDate = selGDs[0].posting_date || new Date().toISOString().slice(0, 10);
+        const routeCode = generateRouteCode(districts[0], dispatchDate);
+
+        // Collect all stops with their products
+        const allStops = [];
+        const allProducts = [];
+        let seq = 0;
+        selGDs.forEach(gd => {
+            const stops = getStopsForGD(gd);
+            stops.forEach(s => {
+                seq++;
+                const tempId = 'tmp_' + seq;
+                allStops.push({
+                    temp_id: tempId,
+                    route_id: null,
+                    stop_sequence: seq,
+                    customer_id: s.customer_id,
+                    customer_name: s.customer_name,
+                    address: s.address,
+                    district: s.district || gd.district,
+                    delivery_documents: s.delivery_documents,
+                    parsed_stop_id: s.id
+                });
+            });
+        });
+
+        // Step 1: Insert route (no unique check on route_code - use UUID)
         const { data: routeData, error: routeErr } = await sb
             .from('routes')
             .insert({
@@ -277,8 +339,7 @@ async function createRoute() {
                 route_name: routeName || (districts.join('+') + ' Route'),
                 assigned_so_id: soId || null,
                 vehicle_number: vehicle,
-                vehicle_type: vehicleType,
-                vendor_name: vendor,
+                vendor_name: vendor || null,
                 dispatch_date: dispatchDate,
                 plant_name: selGDs[0].plant_name,
                 district: districts.join(', '),
@@ -289,56 +350,102 @@ async function createRoute() {
             .select()
             .single();
 
-        if (routeErr) { showToast('Error: ' + routeErr.message, 'error'); return; }
+        if (routeErr) {
+            throw new Error('Route insert failed: ' + routeErr.message);
+        }
 
         const routeId = routeData.id;
 
-        // Create route_stops
-        for (let i = 0; i < allStops.length; i++) {
-            const stop = allStops[i];
-            const { data: rsData } = await sb.from('route_stops').insert({
-                route_id: routeId,
-                stop_sequence: i + 1,
-                customer_id: stop.customer_id,
-                customer_name: stop.customer_name,
-                address: stop.address,
-                district: stop.district,
-                delivery_documents: stop.delivery_documents,
-                parsed_stop_id: stop.id
-            }).select().single();
+        // Step 2: Batch-insert all stops with route_id
+        const stopInserts = allStops.map(s => ({
+            route_id: routeId,
+            stop_sequence: s.stop_sequence,
+            customer_id: s.customer_id,
+            customer_name: s.customer_name,
+            address: s.address,
+            district: s.district,
+            delivery_documents: s.delivery_documents,
+            parsed_stop_id: s.parsed_stop_id
+        }));
 
-            if (!rsData) continue;
+        const { data: insertedStops, error: stopErr } = await sb
+            .from('route_stops')
+            .insert(stopInserts)
+            .select();
 
-            // Copy products
-            const { data: prods } = await sb.from('parsed_products').select('*').eq('stop_id', stop.id);
-            if (prods && prods.length > 0) {
-                await sb.from('stop_products').insert(prods.map(p => ({
-                    route_stop_id: rsData.id,
-                    material_code: p.material_code,
-                    material_description: p.material_description,
-                    batch: p.batch,
-                    quantity: p.quantity,
-                    unit: p.unit,
-                    is_foc: p.is_foc
-                })));
+        if (stopErr) {
+            throw new Error('Stop insert failed: ' + stopErr.message);
+        }
+
+        // Step 3: Fetch all products for all parsed stops in one batch
+        const parsedStopIds = allStops.map(s => s.parsed_stop_id).filter(id => id);
+        if (parsedStopIds.length > 0) {
+            const { data: allProds } = await sb
+                .from('parsed_products')
+                .select('*')
+                .in('stop_id', parsedStopIds);
+
+            // Match products to inserted stops by parsed_stop_id
+            const productInserts = [];
+            (insertedStops || []).forEach(rs => {
+                const matchingProds = (allProds || []).filter(p => p.stop_id === rs.parsed_stop_id);
+                matchingProds.forEach(p => {
+                    productInserts.push({
+                        route_stop_id: rs.id,
+                        material_code: p.material_code,
+                        material_description: p.material_description,
+                        batch: p.batch,
+                        quantity: p.quantity,
+                        unit: p.unit,
+                        is_foc: p.is_foc
+                    });
+                });
+            });
+
+            // Batch insert products
+            if (productInserts.length > 0) {
+                const { error: prodErr } = await sb.from('stop_products').insert(productInserts);
+                if (prodErr) {
+                    console.error('Product insert error:', prodErr);
+                }
             }
         }
 
-        // Mark GDs as assigned
+        // Step 4: Mark GDs as assigned (with status check to prevent double-assignment)
         for (const gdNum of selectedGDs) {
-            await sb.from('available_gds').update({ status: 'assigned' }).eq('group_delivery_number', gdNum);
+            const { error: updateErr } = await sb
+                .from('available_gds')
+                .update({ status: 'assigned' })
+                .eq('group_delivery_number', gdNum)
+                .eq('status', 'available');
+
+            if (updateErr) {
+                console.warn('GD ' + gdNum + ' may have been already assigned:', updateErr);
+            }
         }
+
+        // Step 5: Log to activity feed
+        try {
+            await sb.from('activity_log').insert({
+                event_type: 'route_created',
+                route_id: routeId,
+                route_code: routeCode,
+                message: 'Route ' + routeCode + ' created - ' + allStops.length + ' stops, vehicle ' + vehicle,
+                severity: 'info',
+                warehouse: selGDs[0].plant_name || null
+            });
+        } catch (e) { /* non-critical */ }
 
         showToast('Route ' + routeCode + ' created!', 'success');
         selectedGDs.clear();
-        isCreatingRoute = false;
         loadAvailableGDs();
 
     } catch (err) {
         showToast('Error: ' + err.message, 'error');
+    } finally {
         isCreatingRoute = false;
-        const btn = document.querySelector('.btn-create-route');
-        if (btn) { btn.disabled = false; btn.textContent = 'Create Route'; }
+        const btnReset = document.querySelector('.btn-create-route');
+        if (btnReset) { btnReset.disabled = false; btnReset.textContent = 'Create Route'; }
     }
 }
 
@@ -352,4 +459,15 @@ function groupSinglesIntoBundles(singleStopGDs) {
         groups[key].totalCustomers += gd.num_unique_customers;
     });
     return Object.values(groups).filter(b => b.gds.length >= 2).sort((a, b) => b.gds.length - a.gds.length);
+}
+
+// ---- Load fleet data for dropdowns ----
+async function loadFleetData() {
+    if (!sb) return;
+    const [vehRes, venRes] = await Promise.all([
+        sb.from('fleet_vehicles').select('*').eq('is_active', true).order('vehicle_number'),
+        sb.from('vendors').select('*').eq('is_active', true).order('vendor_name')
+    ]);
+    fleetVehicles = vehRes.data || [];
+    vendors = venRes.data || [];
 }

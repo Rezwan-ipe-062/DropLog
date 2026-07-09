@@ -1,9 +1,10 @@
 // ============================================================
-// DropLog Admin - Dashboard Module
+// DropLog Admin - Dashboard Module v2
 // ============================================================
-// Handles: stats overview, live route tracking, issue alerts
 
 let dashboardPolling = null;
+let currentIssueId = null;
+let dashboardFilter = 'all';
 
 async function loadDashboard() {
     if (!sb) return;
@@ -29,7 +30,7 @@ async function loadDashboard() {
     // Load active routes (in_transit)
     await loadActiveRoutes();
 
-    // Load recent completed
+    // Load recent with filter
     await loadRecentRoutes();
 
     // Start polling for live updates
@@ -85,13 +86,67 @@ async function loadActiveRoutes() {
     container.innerHTML = html;
 }
 
+function setDashboardFilter(status) {
+    dashboardFilter = status;
+    document.querySelectorAll('.dash-filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.status === status);
+    });
+    loadRecentRoutes();
+}
+
+function exportRoutesCSV() {
+    const rows = document.querySelectorAll('#recentRoutesBody tr');
+    if (!rows.length) { showToast('No routes to export', 'warning'); return; }
+
+    let csv = 'Route Code,Route Name,District,Date,Progress,Status\n';
+    rows.forEach(tr => {
+        const tds = tr.querySelectorAll('td');
+        if (tds.length >= 6) {
+            const vals = [];
+            for (let i = 0; i < 6; i++) {
+                let v = tds[i].textContent.trim().replace(/,/g, ';');
+                vals.push(v);
+            }
+            csv += vals.join(',') + '\n';
+        }
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'routes_export_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('CSV exported', 'success');
+}
+
 async function loadRecentRoutes() {
+    const statusFilter = dashboardFilter === 'all' ? ['completed', 'pending', 'in_transit'] : [dashboardFilter];
+
     const { data } = await sb
         .from('routes')
         .select('*')
-        .in('status', ['completed', 'pending'])
+        .in('status', statusFilter)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
+
+    const card = document.querySelector('.card:has(#recentRoutesBody)');
+    if (card && !card.querySelector('.dash-filter-bar')) {
+        const filterBar = document.createElement('div');
+        filterBar.className = 'dash-filter-bar';
+        filterBar.style.cssText = 'display:flex;gap:6px;margin-bottom:12px;align-items:center;';
+        filterBar.innerHTML = `
+            <span style="font-size:13px;color:var(--gray-500);margin-right:4px;">Filter:</span>
+            <button class="dash-filter-btn active" data-status="all" onclick="setDashboardFilter('all')">All</button>
+            <button class="dash-filter-btn" data-status="pending" onclick="setDashboardFilter('pending')">Pending</button>
+            <button class="dash-filter-btn" data-status="in_transit" onclick="setDashboardFilter('in_transit')">In Transit</button>
+            <button class="dash-filter-btn" data-status="completed" onclick="setDashboardFilter('completed')">Completed</button>
+            <span style="flex:1;"></span>
+            <button class="btn-small" onclick="exportRoutesCSV()" title="Export CSV">Export CSV</button>
+        `;
+        card.insertBefore(filterBar, card.querySelector('table'));
+    }
 
     const tbody = document.getElementById('recentRoutesBody');
     if (!data || data.length === 0) {
@@ -100,7 +155,7 @@ async function loadRecentRoutes() {
     }
 
     tbody.innerHTML = data.map(r => {
-        const statusClass = r.status === 'completed' ? 'status-completed' : 
+        const statusClass = r.status === 'completed' ? 'status-completed' :
                            r.status === 'in_transit' ? 'status-transit' : 'status-pending';
         return '<tr onclick="viewRouteDetail(\'' + r.id + '\')" style="cursor:pointer;">' +
             '<td><strong>' + r.route_code + '</strong></td>' +
@@ -109,7 +164,7 @@ async function loadRecentRoutes() {
             '<td>' + formatDate(r.dispatch_date) + '</td>' +
             '<td>' + (r.completed_stops || 0) + '/' + (r.total_stops || 0) + '</td>' +
             '<td><span class="status-badge ' + statusClass + '">' + r.status + '</span></td>' +
-            '<td><span class="link-delete" onclick="deleteRoute(\'' + r.id + '\')">Delete</span></td>' +
+            '<td><span class="link-delete" onclick="event.stopPropagation();deleteRoute(\'' + r.id + '\')">Delete</span></td>' +
             '</tr>';
     }).join('');
 }
@@ -127,6 +182,7 @@ async function checkIssues() {
 
     if (data && data.length > 0) {
         const issue = data[0];
+        currentIssueId = issue.id;
         showIssueAlert(issue);
     }
 }
@@ -144,12 +200,18 @@ function showIssueAlert(issue) {
 }
 
 async function dismissIssue() {
-    await sb.from('issues').update({ 
+    if (!currentIssueId) {
+        document.getElementById('issueAlertPopup').classList.remove('visible');
+        return;
+    }
+
+    await sb.from('issues').update({
         acknowledged: true,
         acknowledged_by: currentAdmin ? currentAdmin.id : null,
         acknowledged_at: new Date().toISOString()
-    }).eq('acknowledged', false);
+    }).eq('id', currentIssueId);
 
+    currentIssueId = null;
     document.getElementById('issueAlertPopup').classList.remove('visible');
     loadDashboard();
 }

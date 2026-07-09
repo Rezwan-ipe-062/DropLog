@@ -1,5 +1,5 @@
 // ============================================================
-// DropLog SO App - Route Loading & Display
+// DropLog SO App - Route Loading & Display v2
 // ============================================================
 let routeData = null;
 let stopsData = [];
@@ -13,7 +13,6 @@ async function handleStartRoute() {
 
     document.getElementById('routeLoading').style.display = 'block';
 
-    // Find route by code
     const { data: route, error } = await sb
         .from('routes')
         .select('*')
@@ -28,7 +27,6 @@ async function handleStartRoute() {
 
     routeData = route;
 
-    // Load stops
     const { data: stops } = await sb
         .from('route_stops')
         .select('*')
@@ -37,7 +35,6 @@ async function handleStartRoute() {
 
     stopsData = stops || [];
 
-    // Load products for all stops
     if (stopsData.length > 0) {
         const stopIds = stopsData.map(s => s.id);
         const { data: products } = await sb
@@ -54,14 +51,12 @@ async function handleStartRoute() {
 
     document.getElementById('routeLoading').style.display = 'none';
 
-    // If already in transit, go directly to stops
     if (routeData.status === 'in_transit') {
         routeStartTime = routeData.started_at ? new Date(routeData.started_at) : new Date();
         renderRouteScreen();
         showScreen('screenStops');
         showToast('Route resumed', 'success');
     } else {
-        // Show route overview with START button
         renderStartScreen();
         showScreen('screenStart');
     }
@@ -75,15 +70,13 @@ function renderStartScreen() {
     document.getElementById('startDistrict').textContent = routeData.district || '--';
     document.getElementById('startStopCount').textContent = stopsData.length + ' stops';
 
-    // Show customer list preview
-    var preview = stopsData.map(function(s, i) { 
-        return '<div class="start-stop-item">' + (i+1) + '. ' + s.customer_name + '</div>'; 
+    var preview = stopsData.map(function(s, i) {
+        return '<div class="start-stop-item">' + (i+1) + '. ' + s.customer_name + '</div>';
     }).join('');
     document.getElementById('startStopPreview').innerHTML = preview;
 }
 
 async function handleRouteStart() {
-    // Validate required fields
     var initialKm = document.getElementById('startInitialKm').value.trim();
     var transitVolume = document.getElementById('startTransitVolume').value.trim();
     var vehicleCapacity = document.getElementById('startVehicleCapacity').value.trim();
@@ -107,7 +100,6 @@ async function handleRouteStart() {
         vehicle_capacity_mt: Number(vehicleCapacity) || null
     }).eq('id', routeData.id);
 
-    // Log event
     await sb.from('delivery_events').insert({
         route_id: routeData.id,
         event_type: 'route_started',
@@ -116,7 +108,6 @@ async function handleRouteStart() {
         performed_by: currentUser ? currentUser.id : null
     });
 
-    // Update local routeData with the values we just saved
     routeData.initial_km_reading = Number(initialKm) || null;
     routeData.transit_volume_mt = Number(transitVolume) || null;
     routeData.vehicle_capacity_mt = Number(vehicleCapacity) || null;
@@ -147,14 +138,13 @@ function renderStopList() {
 
     let html = '';
     stopsData.forEach((stop, i) => {
-        if (stop.status === 'delivered' || stop.status === 'partial') completed++;
-        if (stop.status === 'failed') completed++;
+        if (stop.status === 'delivered' || stop.status === 'partial' || stop.status === 'failed') completed++;
 
-        const statusClass = stop.status === 'delivered' ? 'done' : 
+        const statusClass = stop.status === 'delivered' ? 'done' :
                            stop.status === 'partial' ? 'partial' :
                            stop.status === 'failed' ? 'failed' : 'pending';
 
-        const indicator = stop.status === 'delivered' ? '' : 
+        const indicator = stop.status === 'delivered' ? '' :
                          stop.status === 'failed' ? 'X' : (i + 1);
 
         const prods = productsData[stop.id] || [];
@@ -172,9 +162,14 @@ function renderStopList() {
 
     list.innerHTML = html;
 
-    // Update progress
-    const pct = stopsData.length > 0 ? Math.round((completed / stopsData.length) * 100) : 0;
-    document.getElementById('doneCount').textContent = completed;
+    // Calculate progress from route data (not just local state)
+    const total = stopsData.length;
+    const done = routeData.completed_stops || 0;
+    const failed = routeData.failed_stops || 0;
+    const processed = done + failed;
+    const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+
+    document.getElementById('doneCount').textContent = processed;
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressLabel').textContent = pct + '%';
 

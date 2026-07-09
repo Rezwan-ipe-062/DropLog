@@ -1,7 +1,6 @@
 // ============================================================
-// DropLog Admin - Users Module
+// DropLog Admin - Users Module v2
 // ============================================================
-// Handles: SO account management (add, list, delete)
 
 async function loadUsers() {
     if (!sb) return;
@@ -22,13 +21,12 @@ async function loadUsers() {
     }
 
     empty.style.display = 'none';
-    tbody.innerHTML = data.map(u => 
+    tbody.innerHTML = data.map(u =>
         '<tr>' +
-        '<td><strong>' + u.name + '</strong></td>' +
-        '<td>' + u.user_id + '</td>' +
-        '<td>' + u.pin + '</td>' +
-        '<td>' + (u.warehouse || '-') + '</td>' +
-        '<td>' + (u.phone || '-') + '</td>' +
+        '<td><strong class="editable" onclick="editUserField(\'' + u.id + '\',\'name\',this)">' + esc(u.name) + '</strong></td>' +
+        '<td class="editable" onclick="editUserField(\'' + u.id + '\',\'user_id\',this)">' + esc(u.user_id) + '</td>' +
+        '<td class="editable" onclick="editUserField(\'' + u.id + '\',\'phone\',this)">' + esc(u.phone || '—') + '</td>' +
+        '<td>' + esc(u.warehouse || '—') + '</td>' +
         '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
         '</tr>'
     ).join('');
@@ -46,7 +44,7 @@ async function addUser() {
     }
 
     const { error } = await sb.from('users').insert({
-        user_id: userId, name, pin, role: 'so', 
+        user_id: userId, name, pin, role: 'so',
         phone: phone || null, warehouse: CONFIG.PLANT_NAME
     });
 
@@ -63,9 +61,44 @@ async function addUser() {
     loadUsers();
 }
 
+async function editUserField(id, field, el) {
+    const current = el.textContent.trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current === '—' ? '' : current;
+    input.className = 'inline-edit-input';
+    input.style.width = Math.max(input.value.length * 9 + 20, 100) + 'px';
+
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+
+    input.addEventListener('blur', async () => {
+        const val = input.value.trim();
+        if (val === current) { el.textContent = current || '—'; return; }
+        const update = {};
+        update[field] = val || null;
+        await sb.from('users').update(update).eq('id', id);
+        loadUsers();
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { el.textContent = current || '—'; }
+    });
+}
+
 async function deleteUser(id) {
     if (!confirm('Delete this Supply Officer?')) return;
     await sb.from('users').delete().eq('id', id);
     showToast('Deleted', 'success');
     loadUsers();
+}
+
+function esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
 }

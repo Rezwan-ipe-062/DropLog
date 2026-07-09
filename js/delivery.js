@@ -1,5 +1,5 @@
 // ============================================================
-// DropLog SO App - Delivery Actions
+// DropLog SO App - Delivery Actions v2
 // ============================================================
 let currentStopIndex = null;
 let isProcessing = false;
@@ -16,10 +16,9 @@ function openDelivery(index) {
     document.getElementById('deliveryAddress').textContent = stop.address || '';
     document.getElementById('deliveryRemark').value = '';
 
-    // Render products
     const prods = productsData[stop.id] || [];
-    document.getElementById('deliveryProducts').innerHTML = prods.map(p => 
-        '<div class="product-item"><span class="p-name">' + (p.material_description || '') + 
+    document.getElementById('deliveryProducts').innerHTML = prods.map(p =>
+        '<div class="product-item"><span class="p-name">' + (p.material_description || '') +
         '</span><span class="p-qty">' + (p.quantity || 0) + ' ' + (p.unit || 'GEB') + '</span></div>'
     ).join('');
 
@@ -28,10 +27,12 @@ function openDelivery(index) {
 
 async function handleDelivered() {
     if (currentStopIndex === null || isProcessing) return;
-    isProcessing = true;
+    if (!confirm('Mark this stop as delivered?')) return;
 
-    document.querySelector('.btn-delivered').disabled = true;
-    document.querySelector('.btn-delivered').textContent = 'Saving...';
+    isProcessing = true;
+    const btn = document.querySelector('.btn-delivered');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
 
     const stop = stopsData[currentStopIndex];
     const gps = await getGPS();
@@ -49,12 +50,11 @@ async function handleDelivered() {
     if (error) {
         showToast('Save failed', 'error');
         isProcessing = false;
-        document.querySelector('.btn-delivered').disabled = false;
-        document.querySelector('.btn-delivered').textContent = 'Mark as Delivered';
+        btn.disabled = false;
+        btn.textContent = 'Mark as Delivered';
         return;
     }
 
-    // Log event
     await sb.from('delivery_events').insert({
         route_id: routeData.id,
         route_stop_id: stop.id,
@@ -65,19 +65,17 @@ async function handleDelivered() {
         performed_by: currentUser ? currentUser.id : null
     });
 
-    // Update route progress
     await sb.from('routes').update({
         completed_stops: (routeData.completed_stops || 0) + 1
     }).eq('id', routeData.id);
     routeData.completed_stops = (routeData.completed_stops || 0) + 1;
 
-    // Update local state
     stop.status = 'delivered';
     stop.delivered_at = now;
 
     showToast(stop.customer_name + ' - delivered', 'success');
-    document.querySelector('.btn-delivered').disabled = false;
-    document.querySelector('.btn-delivered').textContent = 'Mark as Delivered';
+    btn.disabled = false;
+    btn.textContent = 'Mark as Delivered';
     renderStopList();
     showScreen('screenStops');
     isProcessing = false;
@@ -85,8 +83,9 @@ async function handleDelivered() {
 
 async function handlePartial() {
     if (currentStopIndex === null || isProcessing) return;
-    isProcessing = true;
+    if (!confirm('Mark as partial delivery?')) return;
 
+    isProcessing = true;
     const stop = stopsData[currentStopIndex];
     const gps = await getGPS();
     const now = new Date().toISOString();
@@ -128,6 +127,7 @@ async function handleFailed() {
     if (currentStopIndex === null || isProcessing) return;
     const remark = document.getElementById('deliveryRemark').value.trim();
     if (!remark) { showToast('Add a remark for failed delivery', 'warning'); document.getElementById('deliveryRemark').focus(); return; }
+    if (!confirm('Mark as failed? Reason: ' + remark)) return;
 
     isProcessing = true;
     const stop = stopsData[currentStopIndex];
@@ -164,4 +164,9 @@ async function handleFailed() {
     renderStopList();
     showScreen('screenStops');
     isProcessing = false;
+}
+
+function backToStops() {
+    currentStopIndex = null;
+    showScreen('screenStops');
 }

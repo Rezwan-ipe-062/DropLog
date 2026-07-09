@@ -1,5 +1,5 @@
 // ============================================================
-// DropLog SO App - Issue Reporting
+// DropLog SO App - Issue Reporting v2
 // ============================================================
 let selectedIssueType = null;
 
@@ -7,13 +7,28 @@ function showIssueScreen() {
     selectedIssueType = null;
     document.querySelectorAll('.issue-option').forEach(o => o.classList.remove('selected'));
     document.getElementById('issueDetails').value = '';
+
+    // Load issue types from DB
+    if (sb) {
+        sb.from('issue_types').select('type_name, icon').order('type_name').then(({ data }) => {
+            const list = document.querySelector('.issue-list');
+            if (data && data.length > 0) {
+                list.innerHTML = data.map(t =>
+                    '<li class="issue-option" onclick="selectIssue(this)">' +
+                    (t.icon || '•') + ' ' + t.type_name + '</li>'
+                ).join('');
+            }
+        });
+    }
+
     showScreen('screenIssue');
 }
 
 function selectIssue(el) {
     document.querySelectorAll('.issue-option').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
-    selectedIssueType = el.textContent;
+    selectedIssueType = el.textContent.replace(/^[^\w]\s/, '').trim();
+    if (!selectedIssueType) selectedIssueType = el.textContent.trim();
 }
 
 async function handleIssueSubmit() {

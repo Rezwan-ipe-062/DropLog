@@ -1,7 +1,6 @@
 // ============================================================
-// DropLog Admin â€” Authentication Module
+// DropLog Admin — Authentication Module v2
 // ============================================================
-// Handles: admin login, session check, logout
 
 let currentAdmin = null;
 
@@ -14,8 +13,6 @@ function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
     document.getElementById('adminName').textContent = currentAdmin.name || 'Admin';
-
-    // Load default tab
     switchTab('dashboard');
 }
 
@@ -53,24 +50,35 @@ function handleLogout() {
     showToast('Signed out', 'info');
 }
 
-// Check saved session on load
-function checkSession() {
+async function checkSession() {
     const saved = localStorage.getItem('droplog_admin');
-    if (saved) {
-        try {
-            currentAdmin = JSON.parse(saved);
-            showMainApp();
-        } catch (e) {
+    if (!saved) { showLoginScreen(); return; }
+
+    try {
+        const parsed = JSON.parse(saved);
+        // Validate session against DB
+        const { data, error } = await sb
+            .from('users')
+            .select('id, name, role, user_id')
+            .eq('id', parsed.id)
+            .in('role', ['admin', 'csd'])
+            .single();
+
+        if (error || !data) {
+            localStorage.removeItem('droplog_admin');
             showLoginScreen();
+            return;
         }
-    } else {
+
+        currentAdmin = data;
+        showMainApp();
+    } catch (e) {
+        localStorage.removeItem('droplog_admin');
         showLoginScreen();
     }
 }
 
-// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    // Wait for Supabase
     const check = setInterval(() => {
         if (sb) {
             clearInterval(check);
