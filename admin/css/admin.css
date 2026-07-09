@@ -234,18 +234,37 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .bundle-gd-info strong { font-size: 12px; color: var(--gray-700); }
 .bundle-gd-info span { color: var(--gray-500); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Route creation form */
-.route-create-form {
+/* Route builder split layout */
+.rb-split { display: flex; gap: 20px; align-items: flex-start; }
+.rb-left { flex: 1; min-width: 0; }
+.rb-form-panel {
     position: sticky;
-    bottom: 0;
-    background: white;
+    top: 16px;
+    width: 360px;
+    flex-shrink: 0;
+    background: var(--white);
     padding: 20px;
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-radius: var(--radius);
     border: 1.5px solid var(--syn-blue);
-    border-bottom: none;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-    margin-top: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
 }
+.rb-form-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--gray-100);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-500);
+}
+.rb-form-close:hover { background: var(--gray-200); }
 .route-create-form h3 { font-size: 16px; margin-bottom: 14px; color: var(--syn-blue); }
 .form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .form-group { flex: 1; min-width: 160px; }

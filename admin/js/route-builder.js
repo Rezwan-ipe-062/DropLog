@@ -85,38 +85,41 @@ function renderRouteBuilder() {
 
         console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
-        let html = '';
+        let leftHtml = '';
 
         if (multiStop.length > 0) {
-            html += '<div class="rb-section">';
-            html += '<h3 class="rb-section-title">Auto-Detected Routes <span class="badge">' + multiStop.length + '</span></h3>';
-            html += '<p class="rb-section-desc">These GDs have multiple stops. Assign vehicle & SO to create route.</p>';
-            multiStop.forEach(gd => { html += renderGDCard(gd); });
-            html += '</div>';
+            leftHtml += '<div class="rb-section">';
+            leftHtml += '<h3 class="rb-section-title">Auto-Detected Routes <span class="badge">' + multiStop.length + '</span></h3>';
+            leftHtml += '<p class="rb-section-desc">These GDs have multiple stops. Assign vehicle & SO to create route.</p>';
+            multiStop.forEach(gd => { leftHtml += renderGDCard(gd); });
+            leftHtml += '</div>';
         }
 
         if (bundles.length > 0) {
-            html += '<div class="rb-section">';
-            html += '<h3 class="rb-section-title">Suggested Bundles <span class="badge">' + bundles.length + '</span></h3>';
-            html += '<p class="rb-section-desc">Single-stop GDs grouped by date & district. Bundle onto one truck.</p>';
-            bundles.forEach((bundle, idx) => { html += renderBundleCard(bundle, idx); });
-            html += '</div>';
+            leftHtml += '<div class="rb-section">';
+            leftHtml += '<h3 class="rb-section-title">Suggested Bundles <span class="badge">' + bundles.length + '</span></h3>';
+            leftHtml += '<p class="rb-section-desc">Single-stop GDs grouped by date & district. Bundle onto one truck.</p>';
+            bundles.forEach((bundle, idx) => { leftHtml += renderBundleCard(bundle, idx); });
+            leftHtml += '</div>';
         }
 
         const bundledGdNums = new Set(bundles.flatMap(b => b.gds.map(g => g.group_delivery_number)));
         const unbundled = singleStop.filter(g => !bundledGdNums.has(g.group_delivery_number));
         if (unbundled.length > 0) {
-            html += '<div class="rb-section">';
-            html += '<h3 class="rb-section-title">Individual GDs <span class="badge">' + unbundled.length + '</span></h3>';
-            unbundled.forEach(gd => { html += renderGDCard(gd); });
-            html += '</div>';
+            leftHtml += '<div class="rb-section">';
+            leftHtml += '<h3 class="rb-section-title">Individual GDs <span class="badge">' + unbundled.length + '</span></h3>';
+            unbundled.forEach(gd => { leftHtml += renderGDCard(gd); });
+            leftHtml += '</div>';
         }
 
-        html += '<div id="routeCreateForm" class="route-create-form" style="display:none;">';
-        html += renderRouteForm();
-        html += '</div>';
+        const formHtml = renderRouteForm();
 
-        container.innerHTML = html;
+        container.innerHTML = '<div class="rb-split">' +
+            '<div class="rb-left">' + leftHtml + '</div>' +
+            '<div class="rb-form-panel" id="routeCreateForm" style="display:none;">' +
+            formHtml +
+            '<button class="rb-form-close" onclick="closeRouteForm()">X</button>' +
+            '</div></div>';
         console.log('[DEBUG] renderRouteBuilder: rendered OK');
     } catch (e) {
         console.error('[DEBUG] renderRouteBuilder CRASH:', e);
@@ -275,6 +278,11 @@ function updateRouteForm() {
     document.getElementById('rfSummary').innerHTML = 
         '<strong>Selected:</strong> ' + selectedGDs.size + ' GDs > ' + totalStops + ' stops > ' + Math.round(totalQty) + ' units<br>' +
         '<strong>Districts:</strong> ' + districts.map(d => escapeHtml(d)).join(', ');
+}
+
+function closeRouteForm() {
+    selectedGDs.clear();
+    renderRouteBuilder();
 }
 
 // ---- Create Route ----
