@@ -1,15 +1,39 @@
--- =====================================================
--- DROPLOG — 02: ALTER TABLES + INDEXES + FK + RLS
--- Name this tab:  "02 - Alter, Indexes & RLS"
--- =====================================================
--- Run AFTER "01 - Tables" (or on existing DB to add
--- missing columns, indexes, and security policies).
--- All statements are idempotent (safe to re-run).
--- =====================================================
+-- ============================================================================
+-- DROPLOG — 02: ALTER TABLES + INDEXES + FK CONSTRAINTS + RLS
+-- Name this SQL tab:  "02 - Alter, Indexes & RLS"
+-- ============================================================================
+-- WHAT THIS SCRIPT DOES:
+--   Section A: Adds missing columns to existing tables (for databases that
+--              were created before the v3.0 schema update). Safe to re-run.
+--   Section B: Creates indexes on commonly queried columns for performance.
+--   Section C: Ensures foreign keys have proper ON DELETE CASCADE behavior.
+--   Section D: Enables Row-Level Security and creates access policies.
+--
+-- HOW TO USE:
+--   Run this AFTER "01 - Tables" if setting up fresh, OR run on an existing
+--   database to add any missing columns/indexes/policies.
+--
+-- SAFETY: All statements use IF NOT EXISTS / IF EXISTS guards.
+--   100% safe to run multiple times on the same database.
+-- ============================================================================
 
--- =====================================================
--- A. ADD MISSING COLUMNS (for existing DBs)
--- =====================================================
+
+-- ============================================================================
+-- SECTION A: ADD MISSING COLUMNS
+-- PURPOSE:  These ALTER TABLE statements add columns that were introduced
+--           in v3.0 of the schema. If the column already exists, nothing
+--           happens (IF NOT EXISTS).
+--
+-- WHAT EACH COLUMN DOES:
+--   users.warehouse         → Assigns each user to a warehouse for data scoping
+--   routes.warehouse        → Alternative warehouse field (for backward compat)
+--   available_gds.warehouse → Alternative warehouse field
+--   parsed_stops.display_order → Display ordering hint for UI
+--   notifications.delivery_log  → JSONB storage for webhook responses
+--   notifications.error_message → Error details if send failed
+--   notifications.recipient_email → Email recipient
+--   notifications.channel       → Delivery channel (sms/whatsapp/email/push)
+-- ============================================================================
 ALTER TABLE users ADD COLUMN IF NOT EXISTS warehouse        TEXT DEFAULT 'CHITTAGONG';
 ALTER TABLE routes ADD COLUMN IF NOT EXISTS warehouse       TEXT DEFAULT 'CHITTAGONG';
 ALTER TABLE available_gds ADD COLUMN IF NOT EXISTS warehouse TEXT DEFAULT 'CHITTAGONG';
@@ -19,33 +43,63 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS error_message TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS recipient_email TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel TEXT;
 
--- =====================================================
--- B. INDEXES (performance)
--- =====================================================
+
+-- ============================================================================
+-- SECTION B: INDEXES
+-- PURPOSE:  Speed up queries on frequently-filtered and joined columns.
+--           Each CREATE INDEX IF NOT EXISTS is safe to re-run.
+--
+-- INDEX NAMING CONVENTION:
+--   idx_{table}_{column} — makes it easy to identify what each index is for.
+--
+-- WHY THESE SPECIFIC INDEXES:
+--   users:          Login lookup (user_id), role filtering, warehouse scoping
+--   contacts:       Search by name/phone/customer_id, district grouping
+--   raw_deliveries: Lookup by GD number, batch upload, plant filter
+--   available_gds:  Status/district/plant filters, date sorting, GD lookup
+--   parsed_stops:   Join by gd_id, search by customer
+--   routes:         Status/district/plant/warehouse filters, SO assignment,
+--                  date sorting, route code lookup
+--   route_stops:    Join by route_id, status filtering
+--   delivery_events: Join by route_id, event type filtering
+--   issues:         Join by route_id, unacknowledged check
+--   notifications:  Join by route_id, status/message_type filtering
+--   vendor_settlements: Join by route_id, status filtering
+--   fleet_vehicles: Warehouse scoping for fleet management
+--   vendors:        Warehouse scoping for vendor management
+-- ============================================================================
+
+-- USERS
 CREATE INDEX IF NOT EXISTS idx_users_id ON users(user_id);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_wh ON users(warehouse);
 
+-- CONTACTS
 CREATE INDEX IF NOT EXISTS idx_contacts_name ON contacts(customer_name);
 CREATE INDEX IF NOT EXISTS idx_contacts_phone ON contacts(phone);
 CREATE INDEX IF NOT EXISTS idx_contacts_customer_id ON contacts(customer_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_district ON contacts(district);
 
+-- RAW DELIVERIES
 CREATE INDEX IF NOT EXISTS idx_raw_gd ON raw_deliveries(group_delivery_number);
 CREATE INDEX IF NOT EXISTS idx_raw_batch ON raw_deliveries(upload_batch_id);
 CREATE INDEX IF NOT EXISTS idx_raw_plant ON raw_deliveries(plant_name);
 
+-- AVAILABLE GDS
 CREATE INDEX IF NOT EXISTS idx_gd_status ON available_gds(status);
 CREATE INDEX IF NOT EXISTS idx_gd_date ON available_gds(posting_date);
 CREATE INDEX IF NOT EXISTS idx_gd_district ON available_gds(district);
 CREATE INDEX IF NOT EXISTS idx_gd_plant ON available_gds(plant_name);
 CREATE INDEX IF NOT EXISTS idx_gd_group ON available_gds(group_delivery_number);
 
+-- PARSED STOPS
 CREATE INDEX IF NOT EXISTS idx_ps_gd ON parsed_stops(gd_id);
 CREATE INDEX IF NOT EXISTS idx_ps_customer ON parsed_stops(customer_name);
 
+-- PARSED PRODUCTS
 CREATE INDEX IF NOT EXISTS idx_pp_stop ON parsed_products(stop_id);
 
+-- ROUTES
 CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
 CREATE INDEX IF NOT EXISTS idx_routes_date ON routes(dispatch_date);
 CREATE INDEX IF NOT EXISTS idx_routes_so ON routes(assigned_so_id);
@@ -53,30 +107,46 @@ CREATE INDEX IF NOT EXISTS idx_routes_plant ON routes(plant_name);
 CREATE INDEX IF NOT EXISTS idx_routes_code ON routes(route_code);
 CREATE INDEX IF NOT EXISTS idx_routes_warehouse ON routes(warehouse);
 
+-- ROUTE STOPS
 CREATE INDEX IF NOT EXISTS idx_rs_route ON route_stops(route_id);
 CREATE INDEX IF NOT EXISTS idx_rs_status ON route_stops(status);
 
+-- STOP PRODUCTS
 CREATE INDEX IF NOT EXISTS idx_sp_stop ON stop_products(route_stop_id);
 
+-- DELIVERY EVENTS
 CREATE INDEX IF NOT EXISTS idx_de_route ON delivery_events(route_id);
 CREATE INDEX IF NOT EXISTS idx_de_type ON delivery_events(event_type);
 
+-- ISSUES
 CREATE INDEX IF NOT EXISTS idx_issues_route ON issues(route_id);
 CREATE INDEX IF NOT EXISTS idx_issues_ack ON issues(acknowledged);
 
+-- NOTIFICATIONS
 CREATE INDEX IF NOT EXISTS idx_noti_route ON notifications(route_id);
 CREATE INDEX IF NOT EXISTS idx_noti_status ON notifications(status);
 CREATE INDEX IF NOT EXISTS idx_noti_type ON notifications(message_type);
 
+-- VENDOR SETTLEMENTS
 CREATE INDEX IF NOT EXISTS idx_vs_route ON vendor_settlements(route_id);
 CREATE INDEX IF NOT EXISTS idx_vs_status ON vendor_settlements(settlement_status);
 
+-- FLEET & VENDORS
 CREATE INDEX IF NOT EXISTS idx_fleet_vehicles_warehouse ON fleet_vehicles(warehouse_code);
 CREATE INDEX IF NOT EXISTS idx_vendors_warehouse ON vendors(warehouse_code);
 
--- =====================================================
--- C. FIX FOREIGN KEY CONSTRAINTS (ensure CASCADE deletes)
--- =====================================================
+
+-- ============================================================================
+-- SECTION C: FOREIGN KEY CONSTRAINTS (with CASCADE DELETE)
+-- PURPOSE:  Ensure data integrity when deleting routes. Without these,
+--           deleting a route would fail if child records exist, or orphan
+--           records would remain.
+--
+-- STRATEGY: Drop the existing FK, then re-add with ON DELETE CASCADE.
+--   • route_stops & stop_products: Deleted when route is deleted
+--   • delivery_events:            Deleted when route is deleted
+--   • issues:                     Deleted when route is deleted
+-- ============================================================================
 ALTER TABLE route_stops DROP CONSTRAINT IF EXISTS route_stops_route_id_fkey;
 ALTER TABLE route_stops ADD CONSTRAINT route_stops_route_id_fkey
     FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE;
@@ -93,9 +163,21 @@ ALTER TABLE issues DROP CONSTRAINT IF EXISTS issues_route_id_fkey;
 ALTER TABLE issues ADD CONSTRAINT issues_route_id_fkey
     FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE;
 
--- =====================================================
--- D. ROW LEVEL SECURITY (all tables)
--- =====================================================
+
+-- ============================================================================
+-- SECTION D: ROW LEVEL SECURITY
+-- PURPOSE:  Supabase RLS ensures that only authenticated users can access
+--           data. These policies are intentionally permissive (all operations
+--           allowed for any authenticated user).
+--
+-- NOTE:     In production, these should be refined to restrict by role
+--           (e.g., SOs can only read their own routes). The current permissive
+--           policy was chosen during development for simplicity.
+--
+-- TABLES WITH RLS ENABLED: All 18 tables listed below.
+-- ============================================================================
+
+-- Enable RLS on each table
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE raw_deliveries ENABLE ROW LEVEL SECURITY;
@@ -115,7 +197,7 @@ ALTER TABLE route_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE issue_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
 
--- Allow all operations for authenticated users
+-- Grant full access to any authenticated user (development mode)
 CREATE POLICY "Enable all for authenticated" ON users FOR ALL USING (true);
 CREATE POLICY "Enable all for authenticated" ON contacts FOR ALL USING (true);
 CREATE POLICY "Enable all for authenticated" ON raw_deliveries FOR ALL USING (true);
