@@ -29,7 +29,14 @@ async function loadAvailableGDs() {
         }
 
         availableGDs = gds || [];
-        console.log('Loaded GDs:', availableGDs.length);
+        console.log('[DEBUG] Loaded GDs:', availableGDs.length);
+        if (availableGDs.length > 0) {
+            console.log('[DEBUG] Sample GD:', JSON.stringify(availableGDs[0]));
+            const withMulti = availableGDs.filter(g => g.is_multi_stop).length;
+            const nullTotal = availableGDs.filter(g => g.total_quantity == null).length;
+            const nullCust = availableGDs.filter(g => g.num_unique_customers == null).length;
+            console.log('[DEBUG] multi_stop=' + withMulti + ' null_totalQty=' + nullTotal + ' null_numCust=' + nullCust);
+        }
 
         // Load stops separately
         if (availableGDs.length > 0) {
@@ -73,78 +80,94 @@ function renderRouteBuilder() {
     const container = document.getElementById('routeBuilderContent');
     if (!container) return;
 
+    console.log('[DEBUG] renderRouteBuilder: availableGDs.length=' + availableGDs.length + ' selectedGDs.size=' + selectedGDs.size);
+
     if (availableGDs.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>No available GDs. Upload an SAP export first.</p></div>';
         return;
     }
 
-    const multiStop = availableGDs.filter(g => g.is_multi_stop);
-    const singleStop = availableGDs.filter(g => !g.is_multi_stop);
-    const bundles = groupSinglesIntoBundles(singleStop);
+    try {
+        const multiStop = availableGDs.filter(g => g.is_multi_stop);
+        const singleStop = availableGDs.filter(g => !g.is_multi_stop);
+        const bundles = groupSinglesIntoBundles(singleStop);
 
-    let html = '';
+        console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
-    // Auto-detected routes
-    if (multiStop.length > 0) {
-        html += '<div class="rb-section">';
-        html += '<h3 class="rb-section-title">Auto-Detected Routes <span class="badge">' + multiStop.length + '</span></h3>';
-        html += '<p class="rb-section-desc">These GDs have multiple stops. Assign vehicle & SO to create route.</p>';
-        multiStop.forEach(gd => { html += renderGDCard(gd); });
+        let html = '';
+
+        if (multiStop.length > 0) {
+            html += '<div class="rb-section">';
+            html += '<h3 class="rb-section-title">Auto-Detected Routes <span class="badge">' + multiStop.length + '</span></h3>';
+            html += '<p class="rb-section-desc">These GDs have multiple stops. Assign vehicle & SO to create route.</p>';
+            multiStop.forEach(gd => { html += renderGDCard(gd); });
+            html += '</div>';
+        }
+
+        if (bundles.length > 0) {
+            html += '<div class="rb-section">';
+            html += '<h3 class="rb-section-title">Suggested Bundles <span class="badge">' + bundles.length + '</span></h3>';
+            html += '<p class="rb-section-desc">Single-stop GDs grouped by date & district. Bundle onto one truck.</p>';
+            bundles.forEach((bundle, idx) => { html += renderBundleCard(bundle, idx); });
+            html += '</div>';
+        }
+
+        const bundledGdNums = new Set(bundles.flatMap(b => b.gds.map(g => g.group_delivery_number)));
+        const unbundled = singleStop.filter(g => !bundledGdNums.has(g.group_delivery_number));
+        if (unbundled.length > 0) {
+            html += '<div class="rb-section">';
+            html += '<h3 class="rb-section-title">Individual GDs <span class="badge">' + unbundled.length + '</span></h3>';
+            unbundled.forEach(gd => { html += renderGDCard(gd); });
+            html += '</div>';
+        }
+
+        html += '<div id="routeCreateForm" class="route-create-form" style="display:none;">';
+        html += renderRouteForm();
         html += '</div>';
+
+        container.innerHTML = html;
+        console.log('[DEBUG] renderRouteBuilder: rendered OK');
+    } catch (e) {
+        console.error('[DEBUG] renderRouteBuilder CRASH:', e);
+        container.innerHTML = '<div class="empty-state"><p style="color:var(--red)">Render error: ' + escapeHtml(e.message) + '</p></div>';
+        showToast('Render error — see console', 'error');
     }
-
-    // Suggested bundles
-    if (bundles.length > 0) {
-        html += '<div class="rb-section">';
-        html += '<h3 class="rb-section-title">Suggested Bundles <span class="badge">' + bundles.length + '</span></h3>';
-        html += '<p class="rb-section-desc">Single-stop GDs grouped by date & district. Bundle onto one truck.</p>';
-        bundles.forEach((bundle, idx) => { html += renderBundleCard(bundle, idx); });
-        html += '</div>';
-    }
-
-    // Unbundled singles
-    const bundledGdNums = new Set(bundles.flatMap(b => b.gds.map(g => g.group_delivery_number)));
-    const unbundled = singleStop.filter(g => !bundledGdNums.has(g.group_delivery_number));
-    if (unbundled.length > 0) {
-        html += '<div class="rb-section">';
-        html += '<h3 class="rb-section-title">Individual GDs <span class="badge">' + unbundled.length + '</span></h3>';
-        unbundled.forEach(gd => { html += renderGDCard(gd); });
-        html += '</div>';
-    }
-
-    // Route creation form
-    html += '<div id="routeCreateForm" class="route-create-form" style="display:none;">';
-    html += renderRouteForm();
-    html += '</div>';
-
-    container.innerHTML = html;
 }
 
 function renderGDCard(gd) {
-    const stops = getStopsForGD(gd);
+    if (!gd || !gd.group_delivery_number) {
+        console.warn('[DEBUG] renderGDCard: invalid gd', gd);
+        return '';
+    }
+
+    const stops = getStopsForGD(gd) || [];
     const isSelected = selectedGDs.has(gd.group_delivery_number);
     const isMulti = gd.is_multi_stop;
+    const numCust = gd.num_unique_customers || 0;
+    const totalQty = gd.total_quantity || 0;
+
+    const gdNum = escapeHtml(String(gd.group_delivery_number));
 
     let html = '<div class="gd-card ' + (isSelected ? 'selected' : '') + (isMulti ? ' multi' : '') + '" ';
-    html += 'onclick="toggleGDSelection(\'' + escapeHtml(gd.group_delivery_number) + '\')">';
+    html += 'onclick="toggleGDSelection(\'' + gdNum.replace(/'/g, '\\\'') + '\')">';
 
     html += '<div class="gd-card-header">';
     html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' class="gd-checkbox">';
     html += '<div class="gd-card-title">';
-    html += '<strong>GD ' + escapeHtml(gd.group_delivery_number) + '</strong>';
-    html += '<span class="gd-meta">' + escapeHtml(gd.district || '') + ' - ' + formatDate(gd.posting_date) + '</span>';
+    html += '<strong>GD ' + gdNum + '</strong>';
+    html += '<span class="gd-meta">' + escapeHtml(String(gd.district || '')) + ' - ' + formatDate(gd.posting_date) + '</span>';
     html += '</div>';
     html += '<div class="gd-card-stats">';
-    html += '<span class="stat-pill">' + escapeHtml(gd.num_unique_customers) + ' stop' + (gd.num_unique_customers > 1 ? 's' : '') + '</span>';
-    html += '<span class="stat-pill">' + Math.round(gd.total_quantity) + ' units</span>';
+    html += '<span class="stat-pill">' + numCust + ' stop' + (numCust !== 1 ? 's' : '') + '</span>';
+    html += '<span class="stat-pill">' + Math.round(totalQty) + ' units</span>';
     html += '</div>';
     html += '</div>';
 
-    // Show customer list from stops
     if (stops.length > 0) {
         html += '<div class="gd-stops-list">';
         stops.forEach(s => {
-            html += '<div class="gd-stop-item">> ' + escapeHtml(s.customer_name) + ' <span class="qty-badge">' + Math.round(s.total_quantity) + '</span></div>';
+            if (!s) return;
+            html += '<div class="gd-stop-item">> ' + escapeHtml(String(s.customer_name || '?')) + ' <span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span></div>';
         });
         html += '</div>';
     }
@@ -154,27 +177,34 @@ function renderGDCard(gd) {
 }
 
 function renderBundleCard(bundle, idx) {
-    const isAllSelected = bundle.gds.every(g => selectedGDs.has(g.group_delivery_number));
+    if (!bundle || !bundle.gds) {
+        console.warn('[DEBUG] renderBundleCard: invalid bundle', bundle);
+        return '';
+    }
+
+    const isAllSelected = bundle.gds.every(g => g && selectedGDs.has(g.group_delivery_number));
 
     let html = '<div class="bundle-card ' + (isAllSelected ? 'selected' : '') + '">';
     html += '<div class="bundle-header" onclick="toggleBundleSelection(' + idx + ')">';
     html += '<input type="checkbox" ' + (isAllSelected ? 'checked' : '') + ' class="gd-checkbox">';
     html += '<div>';
-    html += '<strong>' + escapeHtml(bundle.district) + '</strong> - ' + formatDate(bundle.date);
-    html += '<span class="gd-meta"> - ' + bundle.gds.length + ' GDs, ' + bundle.totalCustomers + ' customers, ' + Math.round(bundle.totalQty) + ' units</span>';
+    html += '<strong>' + escapeHtml(bundle.district || '?') + '</strong> - ' + formatDate(bundle.date);
+    html += '<span class="gd-meta"> - ' + (bundle.gds.length || 0) + ' GDs, ' + (bundle.totalCustomers || 0) + ' customers, ' + Math.round(bundle.totalQty || 0) + ' units</span>';
     html += '</div>';
     html += '</div>';
 
     html += '<div class="bundle-gds">';
     bundle.gds.forEach(gd => {
+        if (!gd || !gd.group_delivery_number) return;
         const stops = getStopsForGD(gd);
-        const custName = stops.length > 0 ? stops[0].customer_name : (gd.district || 'Customer');
+        const custName = stops.length > 0 ? (stops[0].customer_name || '?') : (gd.district || 'Customer');
         const isSelected = selectedGDs.has(gd.group_delivery_number);
+        const gdNumEsc = escapeHtml(String(gd.group_delivery_number));
 
-        html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : '') + '" onclick="event.stopPropagation(); toggleGDSelection(\'' + escapeHtml(gd.group_delivery_number) + '\')">';
+        html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : '') + '" onclick="event.stopPropagation(); toggleGDSelection(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\')">';
         html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + '>';
         html += '<span>' + escapeHtml(custName) + '</span>';
-        html += '<span class="qty-badge">' + Math.round(gd.total_quantity) + ' units</span>';
+        html += '<span class="qty-badge">' + Math.round(gd.total_quantity || 0) + ' units</span>';
         html += '</div>';
     });
     html += '</div>';
@@ -202,6 +232,7 @@ function renderRouteForm() {
 // ---- Selection ----
 
 function toggleGDSelection(gdNum) {
+    console.log('[DEBUG] toggleGDSelection: gdNum=' + gdNum + ' wasSelected=' + selectedGDs.has(gdNum));
     if (selectedGDs.has(gdNum)) selectedGDs.delete(gdNum);
     else selectedGDs.add(gdNum);
     renderRouteBuilder();
