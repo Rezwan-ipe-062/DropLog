@@ -378,7 +378,7 @@ async function createRoute() {
         showToast('Route ' + routeCode + ' created!', 'success');
         selectedGDs.clear();
         isCreatingRoute = false;
-        loadAvailableGDs();
+        switchTab('dashboard');
 
     } catch (err) {
         showToast('Error: ' + err.message, 'error');

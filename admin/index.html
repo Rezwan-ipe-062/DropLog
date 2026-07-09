@@ -80,11 +80,11 @@
         <!-- Dashboard Panel -->
         <div class="panel active" id="panel-dashboard">
             <div class="stats-row">
-                <div class="stat-card blue"><div class="stat-label">Total Routes</div><div class="stat-value" id="statTotal">0</div></div>
-                <div class="stat-card orange"><div class="stat-label">Pending</div><div class="stat-value" id="statPending">0</div></div>
-                <div class="stat-card yellow"><div class="stat-label">In Transit</div><div class="stat-value" id="statTransit">0</div></div>
-                <div class="stat-card green"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
-                <div class="stat-card red"><div class="stat-label">Open Issues</div><div class="stat-value" id="statIssues">0</div></div>
+                <div class="stat-card blue" onclick="filterByStatus(null)"><div class="stat-label">Total Routes</div><div class="stat-value" id="statTotal">0</div></div>
+                <div class="stat-card orange" onclick="filterByStatus('pending')"><div class="stat-label">Pending</div><div class="stat-value" id="statPending">0</div></div>
+                <div class="stat-card yellow" onclick="filterByStatus('active')"><div class="stat-label">In Transit</div><div class="stat-value" id="statTransit">0</div></div>
+                <div class="stat-card green" onclick="filterByStatus('completed')"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
+                <div class="stat-card red" onclick="filterByStatus('issues')"><div class="stat-label">Open Issues</div><div class="stat-value" id="statIssues">0</div></div>
             </div>
 
             <div class="card">
@@ -93,7 +93,7 @@
             </div>
 
             <div class="card">
-                <h3>Recent Routes</h3>
+                <h3>Recent Routes <span id="filterLabel" class="filter-label"></span><span id="clearFilter" class="link-clear" style="display:none;" onclick="filterByStatus(null)">Clear filter</span></h3>
                 <table>
                     <thead><tr><th>Code</th><th>Name</th><th>District</th><th>Date</th><th>Progress</th><th>Status</th><th></th></tr></thead>
                     <tbody id="recentRoutesBody"></tbody>

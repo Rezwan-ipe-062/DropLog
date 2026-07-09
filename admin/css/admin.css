@@ -151,7 +151,11 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
     padding: 16px;
     border-radius: var(--radius);
     border: 1px solid var(--gray-200);
+    cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
 }
+.stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.stat-card.active { border-color: var(--syn-blue); box-shadow: 0 0 0 2px rgba(0,69,124,0.15); }
 .stat-card .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); font-weight: 600; }
 .stat-card .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
 .stat-card.blue .stat-value { color: var(--syn-blue); }
@@ -394,6 +398,9 @@ tbody tr:hover { background: var(--gray-100); }
 .empty-text { text-align: center; color: var(--gray-500); padding: 20px 0; font-size: 14px; }
 .link-delete { color: var(--red); cursor: pointer; font-size: 12px; font-weight: 600; }
 .link-delete:hover { text-decoration: underline; }
+.filter-label { font-size: 12px; font-weight: 400; color: var(--syn-blue); margin-left: 10px; }
+.link-clear { font-size: 11px; font-weight: 600; color: var(--gray-500); cursor: pointer; margin-left: 8px; }
+.link-clear:hover { text-decoration: underline; }
 .btn-danger { padding: 8px 16px; background: white; color: var(--red); border: 1.5px solid var(--red); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .btn-danger:hover { background: var(--red-light); }
 .btn-small { padding: 8px 14px; background: var(--syn-green); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
