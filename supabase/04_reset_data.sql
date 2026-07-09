@@ -34,12 +34,12 @@
 -- ============================================================================
 -- STEP 1: Delete route-related data (deepest children first)
 -- ============================================================================
-DELETE FROM stop_products;          -- Products within route stops
+DELETE FROM delivery_events;        -- FK to route_stops (NO cascade — MUST go first)
+DELETE FROM stop_products;          -- Products within route stops (ON DELETE CASCADE)
+DELETE FROM issues;                 -- Issue reports (FK to routes/stops)
+DELETE FROM notifications;          -- Notification log (FK to routes/stops)
+DELETE FROM vendor_settlements;     -- Settlement records (FK to routes/stops)
 DELETE FROM route_stops;            -- Delivery stops (FK to routes)
-DELETE FROM delivery_events;        -- Audit log entries (FK to routes)
-DELETE FROM issues;                 -- Issue reports (FK to routes)
-DELETE FROM notifications;          -- Notification log (FK to routes)
-DELETE FROM vendor_settlements;     -- Settlement records (FK to routes)
 DELETE FROM routes;                 -- Core route records
 
 
