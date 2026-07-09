@@ -18,6 +18,19 @@ function initSupabase() {
 }
 const _sbInit = setInterval(() => { if (initSupabase()) clearInterval(_sbInit); }, 200);
 
+// Security helpers
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+}
+
+// Security: hash PIN with SHA-256 before sending to DB
+async function hashPin(pin) {
+    const data = new TextEncoder().encode(pin + 'droplog_salt_v1');
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // Shared utilities
 function showToast(msg, type) {
     const t = document.getElementById('toast');

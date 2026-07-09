@@ -6,33 +6,37 @@
 async function loadUsers() {
     if (!sb) return;
 
-    const { data } = await sb
-        .from('users')
-        .select('*')
-        .eq('role', 'so')
-        .eq('warehouse', getWarehouseName())
-        .order('name');
+    try {
+        const { data } = await sb
+            .from('users')
+            .select('*')
+            .eq('role', 'so')
+            .eq('warehouse', getWarehouseName())
+            .order('name');
 
-    const tbody = document.getElementById('usersBody');
-    const empty = document.getElementById('noUsers');
+        const tbody = document.getElementById('usersBody');
+        const empty = document.getElementById('noUsers');
 
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '';
-        empty.style.display = 'block';
-        return;
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        tbody.innerHTML = data.map(u => 
+            '<tr>' +
+            '<td><strong>' + escapeHtml(u.name) + '</strong></td>' +
+            '<td>' + escapeHtml(u.user_id) + '</td>' +
+            '<td>' + escapeHtml(u.warehouse || '-') + '</td>' +
+            '<td>' + escapeHtml(u.phone || '-') + '</td>' +
+            '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
+            '</tr>'
+        ).join('');
+    } catch (e) {
+        console.error('loadUsers:', e);
+        showToast(e.message || 'Something went wrong', 'error');
     }
-
-    empty.style.display = 'none';
-    tbody.innerHTML = data.map(u => 
-        '<tr>' +
-        '<td><strong>' + u.name + '</strong></td>' +
-        '<td>' + u.user_id + '</td>' +
-        '<td>' + u.pin + '</td>' +
-        '<td>' + (u.warehouse || '-') + '</td>' +
-        '<td>' + (u.phone || '-') + '</td>' +
-        '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
-        '</tr>'
-    ).join('');
 }
 
 async function addUser() {
@@ -46,27 +50,39 @@ async function addUser() {
         return;
     }
 
-    const { error } = await sb.from('users').insert({
-        user_id: userId, name, pin, role: 'so', 
-        phone: phone || null, warehouse: getWarehouseName()
-    });
+    try {
+        const hashedPin = await hashPin(pin);
 
-    if (error) {
-        showToast('Error: ' + error.message, 'error');
-        return;
+        const { error } = await sb.from('users').insert({
+            user_id: userId, name, pin: hashedPin, role: 'so', 
+            phone: phone || null, warehouse: getWarehouseName()
+        });
+
+        if (error) {
+            showToast('Error: ' + error.message, 'error');
+            return;
+        }
+
+        document.getElementById('newSOName').value = '';
+        document.getElementById('newSOId').value = '';
+        document.getElementById('newSOPin').value = '';
+        document.getElementById('newSOPhone').value = '';
+        showToast('SO added', 'success');
+        loadUsers();
+    } catch (e) {
+        console.error('addUser:', e);
+        showToast(e.message || 'Something went wrong', 'error');
     }
-
-    document.getElementById('newSOName').value = '';
-    document.getElementById('newSOId').value = '';
-    document.getElementById('newSOPin').value = '';
-    document.getElementById('newSOPhone').value = '';
-    showToast('SO added', 'success');
-    loadUsers();
 }
 
 async function deleteUser(id) {
     if (!confirm('Delete this Supply Officer?')) return;
-    await sb.from('users').delete().eq('id', id);
-    showToast('Deleted', 'success');
-    loadUsers();
+    try {
+        await sb.from('users').delete().eq('id', id);
+        showToast('Deleted', 'success');
+        loadUsers();
+    } catch (e) {
+        console.error('deleteUser:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }

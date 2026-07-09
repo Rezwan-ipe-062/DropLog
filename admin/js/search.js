@@ -17,51 +17,56 @@ function handleSearch(query) {
 async function executeSearch(query) {
     if (!sb) return;
 
-    const results = document.getElementById('searchResults');
-    results.innerHTML = '<p class="searching">Searching...</p>';
+    try {
+        const results = document.getElementById('searchResults');
+        results.innerHTML = '<p class="searching">Searching...</p>';
 
-    const wh = getWarehouseName();
+        const wh = getWarehouseName();
 
-    // Search in route_stops (covers customer, DO, GD)
-    const { data: stops } = await sb
-        .from('route_stops')
-        .select('*, routes!inner(route_code, route_name, status)')
-        .or('customer_name.ilike.%' + query + '%,delivery_documents.cs.{' + query + '}')
-        .eq('routes.plant_name', wh)
-        .limit(20);
+        // Search in route_stops (covers customer, DO, GD)
+        const { data: stops } = await sb
+            .from('route_stops')
+            .select('*, routes!inner(route_code, route_name, status)')
+            .or('customer_name.ilike.%' + query + '%,delivery_documents.cs.{' + query + '}')
+            .eq('routes.plant_name', wh)
+            .limit(20);
 
-    // Search in available_gds
-    const { data: gds } = await sb
-        .from('available_gds')
-        .select('*')
-        .or('group_delivery_number.ilike.%' + query + '%,district.ilike.%' + query + '%')
-        .eq('plant_name', wh)
-        .limit(10);
+        // Search in available_gds
+        const { data: gds } = await sb
+            .from('available_gds')
+            .select('*')
+            .or('group_delivery_number.ilike.%' + query + '%,district.ilike.%' + query + '%')
+            .eq('plant_name', wh)
+            .limit(10);
 
-    let html = '';
+        let html = '';
 
-    if (stops && stops.length > 0) {
-        html += '<h4>Route Stops (' + stops.length + ')</h4>';
-        stops.forEach(s => {
-            const route = s.routes || {};
-            html += '<div class="search-result">';
-            html += '<strong>' + s.customer_name + '</strong>';
-            html += '<span class="sr-meta">' + (s.address || '') + '</span>';
-            html += '<span class="sr-meta">Route: ' + (route.route_code || '-') + ' | Status: ' + s.status + '</span>';
-            html += '</div>';
-        });
+        if (stops && stops.length > 0) {
+            html += '<h4>Route Stops (' + stops.length + ')</h4>';
+            stops.forEach(s => {
+                const route = s.routes || {};
+                html += '<div class="search-result">';
+                html += '<strong>' + escapeHtml(s.customer_name) + '</strong>';
+                html += '<span class="sr-meta">' + escapeHtml(s.address || '') + '</span>';
+                html += '<span class="sr-meta">Route: ' + escapeHtml(route.route_code || '-') + ' | Status: ' + escapeHtml(s.status) + '</span>';
+                html += '</div>';
+            });
+        }
+
+        if (gds && gds.length > 0) {
+            html += '<h4>Group Deliveries (' + gds.length + ')</h4>';
+            gds.forEach(g => {
+                html += '<div class="search-result">';
+                html += '<strong>GD ' + escapeHtml(g.group_delivery_number) + '</strong>';
+                html += '<span class="sr-meta">' + escapeHtml(g.district) + ' - ' + formatDate(g.posting_date) + ' - ' + escapeHtml(g.status) + '</span>';
+                html += '</div>';
+            });
+        }
+
+        if (!html) html = '<p class="empty-text">No results for "' + escapeHtml(query) + '"</p>';
+        results.innerHTML = html;
+    } catch (e) {
+        console.error('executeSearch:', e);
+        showToast(e.message || 'Something went wrong', 'error');
     }
-
-    if (gds && gds.length > 0) {
-        html += '<h4>Group Deliveries (' + gds.length + ')</h4>';
-        gds.forEach(g => {
-            html += '<div class="search-result">';
-            html += '<strong>GD ' + g.group_delivery_number + '</strong>';
-            html += '<span class="sr-meta">' + g.district + ' - ' + formatDate(g.posting_date) + ' - ' + g.status + '</span>';
-            html += '</div>';
-        });
-    }
-
-    if (!html) html = '<p class="empty-text">No results for "' + query + '"</p>';
-    results.innerHTML = html;
 }
