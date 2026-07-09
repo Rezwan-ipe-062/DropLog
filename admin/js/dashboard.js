@@ -165,31 +165,33 @@ async function loadIssueRoutes() {
         const { data } = await sb
             .from('issues')
             .select('*, routes!inner(route_code, route_name, district, status)')
-            .eq('acknowledged', false)
             .eq('routes.plant_name', getWarehouseName())
-            .order('reported_at', { ascending: false });
+            .order('reported_at', { ascending: false })
+            .limit(100);
 
         const tbody = document.getElementById('recentRoutesBody');
         const filterLabel = document.getElementById('filterLabel');
         const clearFilter = document.getElementById('clearFilter');
-        if (filterLabel) filterLabel.textContent = 'Showing: Routes with open issues';
+        const openCount = (data || []).filter(i => !i.acknowledged).length;
+        if (filterLabel) filterLabel.textContent = 'Issues (' + openCount + ' open / ' + (data || []).length + ' total)';
         if (clearFilter) clearFilter.style.display = 'inline';
 
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No open issues.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No issues reported.</td></tr>';
             return;
         }
 
         tbody.innerHTML = data.map(issue => {
             const r = issue.routes || {};
+            const ackLabel = issue.acknowledged ? '<span class="status-badge status-completed">Dismissed</span>' : '<span class="status-badge status-pending">Open</span>';
             return '<tr style="cursor:pointer;">' +
                 '<td><strong>' + escapeHtml(r.route_code || '?') + '</strong></td>' +
                 '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
                 '<td>' + escapeHtml(r.district || '-') + '</td>' +
                 '<td>' + formatDate(issue.reported_at) + '</td>' +
                 '<td>' + escapeHtml(issue.issue_type) + '</td>' +
-                '<td><span class="status-badge status-pending">issue</span></td>' +
-                '<td>' + escapeHtml(issue.details || '').substring(0, 20) + '</td>' +
+                '<td>' + ackLabel + '</td>' +
+                '<td>' + escapeHtml(issue.details || '').substring(0, 25) + '</td>' +
                 '</tr>';
         }).join('');
     } catch (e) {
