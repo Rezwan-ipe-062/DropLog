@@ -94,9 +94,11 @@ function excelDateToISO(value) {
 }
 
 function detectDataSheet(wb) {
+    const sheetNamesLower = wb.SheetNames.map(n => n.trim().toLowerCase());
     for (const name of CONFIG.SAP_SHEETS) {
-        if (wb.SheetNames.includes(name)) {
-            const sheet = wb.Sheets[name];
+        const idx = sheetNamesLower.indexOf(name.trim().toLowerCase());
+        if (idx !== -1) {
+            const sheet = wb.Sheets[wb.SheetNames[idx]];
             const sample = XLSX.utils.sheet_to_json(sheet, { range: 0, header: 1 });
             if (sample[0] && sample[0].length > 20) return sheet;
         }
@@ -116,6 +118,13 @@ function mapColumns(rows) {
     if (!rows || rows.length === 0) return null;
 
     const sampleRow = rows[0];
+    // Build lowercase lookup of actual column names (trimmed)
+    const actualCols = {};
+    Object.keys(sampleRow).forEach(k => {
+        const trimmed = k.trim();
+        actualCols[trimmed.toLowerCase()] = trimmed;
+    });
+
     const colMapping = {};
     let requiredFound = 0;
     const required = ['group_delivery_number', 'delivery_document', 'bill_to_party_name', 
@@ -123,8 +132,9 @@ function mapColumns(rows) {
 
     for (const [internalName, possibleNames] of Object.entries(CONFIG.SAP_COLUMNS)) {
         for (const colName of possibleNames) {
-            if (sampleRow.hasOwnProperty(colName)) {
-                colMapping[internalName] = colName;
+            const key = colName.toLowerCase();
+            if (actualCols[key]) {
+                colMapping[internalName] = actualCols[key];
                 if (required.includes(internalName)) requiredFound++;
                 break;
             }
@@ -133,6 +143,7 @@ function mapColumns(rows) {
 
     if (requiredFound < required.length) {
         console.error('Missing required columns. Found mapping:', colMapping);
+        console.error('Available columns in file:', Object.keys(actualCols));
         return null;
     }
 
