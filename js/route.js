@@ -290,11 +290,14 @@ function renderStopList() {
         html += '</div></li>';
     });
 
+    // Destroy previous Sortable instance before wiping DOM
+    if (list._sortable) list._sortable.destroy();
+
     list.innerHTML = html;
 
     // Init SortableJS for drag & drop reorder
-    if (typeof Sortable !== 'undefined' && !list.Sortable) {
-        Sortable.create(list, {
+    if (typeof Sortable !== 'undefined') {
+        list._sortable = Sortable.create(list, {
             handle: '.drag-handle',
             animation: 200,
             ghostClass: 'sortable-ghost',
@@ -304,7 +307,6 @@ function renderStopList() {
                 document.getElementById('btnSaveOrder').style.display = 'block';
             }
         });
-        list.Sortable = true;
     }
 
     // Update progress
