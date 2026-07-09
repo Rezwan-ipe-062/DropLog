@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DropLog Admin - Syngenta</title>
     <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" defer></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </head>
 <body>
 
@@ -85,6 +87,11 @@
                 <div class="stat-card yellow" onclick="filterByStatus('active')"><div class="stat-label">In Transit</div><div class="stat-value" id="statTransit">0</div></div>
                 <div class="stat-card green" onclick="filterByStatus('completed')"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
                 <div class="stat-card red" onclick="filterByStatus('issues')"><div class="stat-label">Open Issues</div><div class="stat-value" id="statIssues">0</div></div>
+            </div>
+
+            <div class="card map-card">
+                <h3>Live Routes Map</h3>
+                <div id="adminRouteMap" class="admin-route-map"></div>
             </div>
 
             <div class="card">
@@ -242,6 +249,7 @@
 <script src="js/upload.js"></script>
 <script src="js/route-builder.js"></script>
 <script src="js/dashboard.js"></script>
+<script src="js/route-map.js"></script>
 <script src="js/contacts.js"></script>
 <script src="js/users.js"></script>
 <script src="js/search.js"></script>

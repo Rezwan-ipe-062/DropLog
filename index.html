@@ -6,8 +6,6 @@
     <title>DropLog - Syngenta</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     <link rel="stylesheet" href="css/so.css?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#00457C">
@@ -148,8 +146,6 @@
         </div>
     </div>
 
-    <div id="routeMap" class="route-map"></div>
-
     <div class="section-label">Delivery Stops</div>
     <ul class="stop-list" id="stopList"></ul>
 
@@ -240,7 +236,6 @@
 <script src="js/delivery.js"></script>
 <script src="js/issue.js"></script>
 <script src="js/complete.js"></script>
-<script src="js/route-map.js"></script>
 
 <script>
 if ('serviceWorker' in navigator) {

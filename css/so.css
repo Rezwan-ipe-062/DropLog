@@ -184,7 +184,7 @@ body {
 .progress-label { font-size: 12px; font-weight: 700; color: var(--syn-green); min-width: 36px; text-align: right; }
 
 /* GPS Trail Map */
-.route-map { height: 200px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--gray-200); }
+.issues-section { margin-top: 20px; }
 
 /* Stop List */
 .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gray-500); margin-bottom: 10px; }

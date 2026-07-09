@@ -60,23 +60,7 @@ function showScreen(id) {
     if (!_backNav && id !== 'screenLogin') history.pushState({ screen: id }, '');
     _backNav = false;
 
-    // GPS breadcrumb trail map lifecycle
-    if (id === 'screenStops') {
-        setTimeout(initRouteMap, 100);
-        // Retry in case Leaflet JS hasn't loaded yet
-        if (typeof L === 'undefined') {
-            var _retryMap = setInterval(function() {
-                if (typeof L !== 'undefined') {
-                    clearInterval(_retryMap);
-                    initRouteMap();
-                }
-            }, 500);
-            setTimeout(function() { clearInterval(_retryMap); }, 10000);
-        }
-    } else {
-        destroyRouteMap();
-    }
-
+    // Hide save order button when leaving stops screen
     if (id !== 'screenStops') {
         var btn = document.getElementById('btnSaveOrder');
         if (btn) { btn.style.display = 'none'; btn.textContent = 'Save Stop Order'; btn.disabled = false; }

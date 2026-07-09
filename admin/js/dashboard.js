@@ -30,6 +30,8 @@ async function loadDashboard() {
         await loadActiveRoutes();
         await loadRecentRoutes();
         startDashboardPolling();
+        initAdminMap();
+        renderAdminMap();
     } catch (e) {
         console.error('loadDashboard:', e);
     }
@@ -47,8 +49,12 @@ async function loadActiveRoutes() {
         const container = document.getElementById('activeRoutes');
         if (!data || data.length === 0) {
             container.innerHTML = '<p class="empty-text">No routes currently in transit.</p>';
+            window._adminActiveRoutesData = [];
+            renderAdminMap();
             return;
         }
+
+        window._adminActiveRoutesData = data;
 
         container.innerHTML = data.map(route => {
             const stops = route.route_stops || [];
@@ -78,6 +84,8 @@ async function loadActiveRoutes() {
             html += '</div></div>';
             return html;
         }).join('');
+
+        renderAdminMap();
     } catch (e) {
         console.error('loadActiveRoutes:', e);
     }
