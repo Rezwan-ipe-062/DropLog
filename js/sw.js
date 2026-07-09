@@ -1,7 +1,7 @@
 // ============================================================
 // DropLog Service Worker - Offline Support
 // ============================================================
-var CACHE_NAME = 'droplog-v2';
+var CACHE_NAME = 'droplog-v3';
 var urlsToCache = [
     '.',
     'index.html',
