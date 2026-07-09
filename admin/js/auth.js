@@ -8,8 +8,6 @@ let currentAdmin = null;
 function showLoginScreen() {
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('mainApp').style.display = 'none';
-    const whLabel = document.getElementById('loginWhLabel');
-    if (whLabel) whLabel.textContent = getWarehouseName() + ' Warehouse';
 }
 
 function showMainApp() {
@@ -52,16 +50,19 @@ async function handleAdminLogin() {
             return;
         }
 
-        // Validate warehouse match
-        const expectedWh = getWarehouseName();
-        if (data.warehouse !== expectedWh) {
-            showToast('This account is for ' + data.warehouse + ' — switch to ?wh=' + data.warehouse.substring(0, 3), 'error');
-            return;
-        }
-
         currentAdmin = data;
         localStorage.setItem('droplog_admin', JSON.stringify(data));
         showToast('Signed in as ' + data.name, 'success');
+
+        // Auto-redirect if logged into wrong warehouse
+        if (data.warehouse !== getWarehouseName()) {
+            const code = data.warehouse.substring(0, 3);
+            const url = new URL(window.location.href);
+            url.searchParams.set('wh', code);
+            window.location.href = url.toString();
+            return;
+        }
+
         showMainApp();
     } catch (e) {
         console.error('handleAdminLogin:', e);

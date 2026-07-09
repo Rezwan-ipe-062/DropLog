@@ -3,21 +3,40 @@
 -- Name this SQL tab:  "05 - Hash Existing PINs"
 -- ============================================================================
 -- WHAT THIS SCRIPT DOES:
---   Hashes all existing plaintext PINs in the users table using
---   PostgreSQL's built-in pgcrypto extension (SHA-256 with salt).
---   After this migration, all PINs are stored as hex-encoded SHA-256 hashes.
+--   Migrates all plaintext PINs in the `users` table to SHA-256 hashes
+--   using PostgreSQL's pgcrypto extension. After running, every PIN value
+--   is a 64-character hex string instead of a 4-digit number.
 --
--- WHY: PINs were previously stored in plaintext. All login code has been
---      updated to hash PINs client-side before sending to the database.
---      This migration ensures existing records are compatible.
+-- WHY THIS IS NEEDED:
+--   PINs were originally stored in plaintext (e.g. '0001'). All application
+--   code now hashes PINs client-side using the Web Crypto API (SubtleCrypto)
+--   before sending to the database. This migration hashes existing records
+--   so they match the incoming client-side hashes.
 --
--- RUN THIS: After deploying the code changes (hash in auth.js, users.js).
---            Run ONLY ONCE.
+-- HOW TO USE:
+--   1. Open Supabase SQL Editor
+--   2. Create a NEW tab (click "New query")
+--   3. Rename the tab to:  05 - Hash Existing PINs
+--   4. Paste this entire script and click RUN
 --
--- SAFETY: Idempotent — uses IF NOT EXISTS for extension.
---          Can be re-run (hashing an already-hashed value again won't match
---          client-side hashes, so existing sessions would break — but that's
---          actually a security feature for re-migration).
+--   Run this AFTER deploying the updated auth.js, config.js, and users.js
+--   files (which contain the hashPin() function). Run BEFORE any user tries
+--   to log in with the new code, otherwise logins will fail (plaintext PIN
+--   in DB won't match the hash the client now sends).
+--
+-- SAFETY:
+--   - CREATE EXTENSION IF NOT EXISTS — safe to re-run
+--   - UPDATE WHERE length(pin) < 64 — only affects plaintext rows;
+--     already-hashed rows (64 chars) are skipped
+--   - Idempotent — running twice will skip already-hashed rows
+--
+-- TABLE AFFECTED: users
+--
+-- users.pin column:
+--   BEFORE: 4-digit string ('0001')
+--   AFTER:  64-char SHA-256 hex ('276af56a3cb21a3c19c569141151882cb...')
+--   Note:  The hash input is pin + salt ('droplog_salt_v1'), matching the
+--          client-side hashPin() function in config.js.
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
