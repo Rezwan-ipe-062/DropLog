@@ -6,6 +6,8 @@ let availableGDs = [];
 let isCreatingRoute = false;
 let selectedGDs = new Set();
 let soList = [];
+let vehicleList = [];
+let vendorList = [];
 let stopsCache = {}; // gd_id > stops array
 
 async function loadAvailableGDs() {
@@ -58,6 +60,23 @@ async function loadAvailableGDs() {
             .eq('is_active', true)
             .in('warehouse', [wh, ACTIVE_WAREHOUSE_CODE]);
         soList = users || [];
+
+        // Load vehicle list
+        const { data: vehicles } = await sb
+            .from('fleet_vehicles')
+            .select('*')
+            .eq('warehouse_code', getWarehouseCode())
+            .eq('is_active', true)
+            .order('vehicle_number');
+        vehicleList = vehicles || [];
+
+        // Load vendor list
+        const { data: vendors } = await sb
+            .from('vendors')
+            .select('*')
+            .eq('warehouse_code', getWarehouseCode())
+            .order('vendor_name');
+        vendorList = vendors || [];
     } catch (e) {
         console.error('loadAvailableGDs:', e);
         showToast(e.message || 'Something went wrong', 'error');
@@ -217,9 +236,9 @@ function renderBundleCard(bundle, idx) {
 function renderRouteForm() {
     let html = '<h3>Create Route</h3>';
     html += '<div class="form-row">';
-    html += '<div class="form-group"><label>Vehicle Number</label><input type="text" id="rfVehicle" placeholder="e.g. DM AU-11-1917"></div>';
+    html += '<div class="form-group"><label>Vehicle Number</label><select id="rfVehicle"><option value="">- Select Vehicle -</option></select></div>';
     html += '<div class="form-group"><label>Vehicle Type</label><select id="rfVehicleType"><option value="cover_truck">Cover Truck</option><option value="open_truck">Open Truck</option><option value="pickup">Pickup</option></select></div>';
-    html += '<div class="form-group"><label>Vendor</label><input type="text" id="rfVendor" placeholder="e.g. Rupali Agencies"></div>';
+    html += '<div class="form-group"><label>Vendor</label><select id="rfVendor"><option value="">- Select Vendor -</option></select></div>';
     html += '</div>';
     html += '<div class="form-row">';
     html += '<div class="form-group"><label>Assign SO</label><select id="rfSO"><option value="">- Select Supply Officer -</option></select></div>';
@@ -268,6 +287,26 @@ function updateRouteForm() {
             opt.value = so.id;
             opt.textContent = so.name + ' (' + so.user_id + ')';
             soSelect.appendChild(opt);
+        });
+    }
+
+    const vehicleSelect = document.getElementById('rfVehicle');
+    if (vehicleSelect && vehicleSelect.options.length <= 1) {
+        vehicleList.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vehicle_number;
+            opt.textContent = v.vehicle_number;
+            vehicleSelect.appendChild(opt);
+        });
+    }
+
+    const vendorSelect = document.getElementById('rfVendor');
+    if (vendorSelect && vendorSelect.options.length <= 1) {
+        vendorList.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vendor_name;
+            opt.textContent = v.vendor_name;
+            vendorSelect.appendChild(opt);
         });
     }
 
