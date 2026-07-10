@@ -15,7 +15,7 @@ function showMainApp() {
     document.getElementById('mainApp').style.display = 'block';
 
     const nameEl = document.getElementById('adminName');
-    if (nameEl) nameEl.textContent = ACTIVE_WAREHOUSE_CODE + ' - ' + (currentAdmin.name || 'Admin');
+    if (nameEl) nameEl.textContent = currentAdmin.name || 'Admin';
 
     // Load default tab
     switchTab('dashboard');
