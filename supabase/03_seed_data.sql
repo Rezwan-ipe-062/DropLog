@@ -72,10 +72,10 @@ ON CONFLICT (type_name) DO NOTHING;
 -- ============================================================================
 -- NOTE: PINs are SHA-256 hashes (not plaintext).
 -- Plain equivalents: 0000, 0001, 0002, 0003, 0004
-INSERT INTO users (user_id, name, pin, role, warehouse) VALUES
-    ('ADMIN-01',  'CSO Admin',  '3ff50b28d046067d598730a0ac3f9f38b4d03710ce330f199fd9f43bc0ae43bf', 'admin', 'CHITTAGONG'),
-    ('ADMIN-CTG', 'CTG Admin',  '276af56a3cb21a3c19c569141151882cb395e1d34cd130e64df286635670effa', 'admin', 'CHITTAGONG'),
-    ('ADMIN-GAZ', 'GAZ Admin',  'ba1a4ae480d59ad3d5dfc91361390a37650bcb5d1045d95ea34fad5d26712f3c', 'admin', 'GAZIPUR'),
-    ('ADMIN-JSR', 'JSR Admin',  'a05f3804e977702e6ce7c943e0e1c4009c51b2a4a0febc2218379e24a63f4174', 'admin', 'JASHORE'),
-    ('ADMIN-BGR', 'BGR Admin',  'f2324234378b4b9ec2670a278a25c2122844076c0024fea25bfca568aa4b344e', 'admin', 'BOGURA')
+INSERT INTO users (user_id, name, pin, role, warehouse, pin_plain) VALUES
+    ('ADMIN-01',  'CSO Admin',  '3ff50b28d046067d598730a0ac3f9f38b4d03710ce330f199fd9f43bc0ae43bf', 'admin', 'CHITTAGONG', '0000'),
+    ('ADMIN-CTG', 'CTG Admin',  '276af56a3cb21a3c19c569141151882cb395e1d34cd130e64df286635670effa', 'admin', 'CHITTAGONG', '0001'),
+    ('ADMIN-GAZ', 'GAZ Admin',  'ba1a4ae480d59ad3d5dfc91361390a37650bcb5d1045d95ea34fad5d26712f3c', 'admin', 'GAZIPUR', '0002'),
+    ('ADMIN-JSR', 'JSR Admin',  'a05f3804e977702e6ce7c943e0e1c4009c51b2a4a0febc2218379e24a63f4174', 'admin', 'JASHORE', '0003'),
+    ('ADMIN-BGR', 'BGR Admin',  'f2324234378b4b9ec2670a278a25c2122844076c0024fea25bfca568aa4b344e', 'admin', 'BOGURA', '0004')
 ON CONFLICT (user_id) DO NOTHING;

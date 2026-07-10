@@ -30,7 +30,8 @@ async function loadUsers() {
             '<td>' + escapeHtml(u.user_id) + '</td>' +
             '<td>' + escapeHtml(u.warehouse || '-') + '</td>' +
             '<td>' + escapeHtml(u.phone || '-') + '</td>' +
-            '<td><span class="link-delete" onclick="resetPin(\'' + u.id + '\', \'' + escapeHtml(u.name) + '\')">Reset PIN</span></td>' +
+            '<td style="font-family:monospace;font-weight:600;">' + escapeHtml(u.pin_plain || '--') + '</td>' +
+            '<td><span class="link-delete" onclick="resetPin(\'' + u.id + '\', \'' + escapeHtml(u.name) + '\')">Reset</span></td>' +
             '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
             '</tr>'
         ).join('');
@@ -55,7 +56,7 @@ async function addUser() {
         const hashedPin = await hashPin(pin);
 
         const { error } = await sb.from('users').insert({
-            user_id: userId, name, pin: hashedPin, role: 'so', 
+            user_id: userId, name, pin: hashedPin, pin_plain: pin, role: 'so', 
             phone: phone || null, warehouse: getWarehouseName()
         });
 
@@ -97,7 +98,7 @@ async function resetPin(userId, userName) {
     if (!confirm('Set new PIN for ' + userName + '?')) return;
     try {
         var hashed = await hashPin(newPin);
-        await sb.from('users').update({ pin: hashed }).eq('id', userId);
+        await sb.from('users').update({ pin: hashed, pin_plain: newPin }).eq('id', userId);
         showToast('PIN reset for ' + userName, 'success');
         loadUsers();
     } catch (e) {

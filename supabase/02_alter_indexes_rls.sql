@@ -28,6 +28,8 @@
 --   users.warehouse         → Assigns each user to a warehouse for data scoping
 --   routes.warehouse        → Alternative warehouse field (for backward compat)
 --   available_gds.warehouse → Alternative warehouse field
+--   users.pin_plain        → Stores plaintext PIN for admin reference (optional; for SO password recovery)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_plain TEXT;
 --   parsed_stops.display_order → Display ordering hint for UI
 --   notifications.delivery_log  → JSONB storage for webhook responses
 --   notifications.error_message → Error details if send failed
