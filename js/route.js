@@ -61,6 +61,8 @@ async function handleRouteSelect(routeId, isInTransit) {
     try {
         if (!sb) return;
 
+        document.getElementById('myRoutesLoading').style.display = 'block';
+
         const { data: route, error } = await sb
             .from('routes')
             .select('*')

@@ -50,13 +50,13 @@ async function loadAvailableGDs() {
         selectedGDs.clear();
         renderRouteBuilder();
 
-        // Load SO list (scoped to active warehouse)
+        // Load SO list (scoped to active warehouse — matches both short code and full name)
         const { data: users } = await sb
             .from('users')
             .select('*')
             .eq('role', 'so')
             .eq('is_active', true)
-            .eq('warehouse', wh);
+            .in('warehouse', [wh, ACTIVE_WAREHOUSE_CODE]);
         soList = users || [];
     } catch (e) {
         console.error('loadAvailableGDs:', e);
