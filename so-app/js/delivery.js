@@ -60,7 +60,7 @@ async function handleDelivered() {
         }
 
         // Log event
-        await sb.from('delivery_events').insert({
+        var { error: evErr } = await sb.from('delivery_events').insert({
             route_id: routeData.id,
             route_stop_id: stop.id,
             event_type: 'delivery_confirmed',
@@ -69,11 +69,13 @@ async function handleDelivered() {
             remark: remark || null,
             performed_by: currentUser ? currentUser.id : null
         });
+        if (evErr) console.error('event insert failed:', evErr);
 
         // Update route progress
-        await sb.from('routes').update({
+        var { error: rtErr } = await sb.from('routes').update({
             completed_stops: (routeData.completed_stops || 0) + 1
         }).eq('id', routeData.id);
+        if (rtErr) console.error('route update failed:', rtErr);
         routeData.completed_stops = (routeData.completed_stops || 0) + 1;
 
         // Update local state
@@ -105,15 +107,20 @@ async function handlePartial() {
         const now = new Date().toISOString();
         const remark = document.getElementById('deliveryRemark').value.trim();
 
-        await sb.from('route_stops').update({
+        var { error: stopErr } = await sb.from('route_stops').update({
             status: 'partial',
             delivered_at: now,
             gps_lat: gps.lat,
             gps_lng: gps.lng,
             remark: remark || 'Partial delivery'
         }).eq('id', stop.id);
+        if (stopErr) {
+            showToast('Save failed', 'error');
+            isProcessing = false;
+            return;
+        }
 
-        await sb.from('delivery_events').insert({
+        var { error: evErr } = await sb.from('delivery_events').insert({
             route_id: routeData.id,
             route_stop_id: stop.id,
             event_type: 'delivery_partial',
@@ -122,10 +129,12 @@ async function handlePartial() {
             remark: remark || 'Partial delivery',
             performed_by: currentUser ? currentUser.id : null
         });
+        if (evErr) console.error('event insert failed:', evErr);
 
-        await sb.from('routes').update({
+        var { error: rtErr } = await sb.from('routes').update({
             completed_stops: (routeData.completed_stops || 0) + 1
         }).eq('id', routeData.id);
+        if (rtErr) console.error('route update failed:', rtErr);
         routeData.completed_stops = (routeData.completed_stops || 0) + 1;
 
         stop.status = 'partial';
@@ -154,15 +163,20 @@ async function handleFailed() {
     const gps = await getGPS();
     const now = new Date().toISOString();
 
-    await sb.from('route_stops').update({
+    var { error: stopErr } = await sb.from('route_stops').update({
         status: 'failed',
         delivered_at: now,
         gps_lat: gps.lat,
         gps_lng: gps.lng,
         remark: remark
     }).eq('id', stop.id);
+    if (stopErr) {
+        showToast('Save failed', 'error');
+        isProcessing = false;
+        return;
+    }
 
-    await sb.from('delivery_events').insert({
+    var { error: evErr } = await sb.from('delivery_events').insert({
         route_id: routeData.id,
         route_stop_id: stop.id,
         event_type: 'delivery_failed',
@@ -171,10 +185,12 @@ async function handleFailed() {
         remark: remark,
         performed_by: currentUser ? currentUser.id : null
     });
+    if (evErr) console.error('event insert failed:', evErr);
 
-    await sb.from('routes').update({
+    var { error: rtErr } = await sb.from('routes').update({
         failed_stops: (routeData.failed_stops || 0) + 1
     }).eq('id', routeData.id);
+    if (rtErr) console.error('route update failed:', rtErr);
     routeData.failed_stops = (routeData.failed_stops || 0) + 1;
 
     stop.status = 'failed';

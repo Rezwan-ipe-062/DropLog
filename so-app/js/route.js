@@ -138,22 +138,28 @@ async function handleStartRoute() {
         routeData = route;
 
         // Load stops
-        const { data: stops } = await sb
+        const { data: stops, error: stopsErr } = await sb
             .from('route_stops')
             .select('*')
             .eq('route_id', route.id)
             .order('stop_sequence');
 
+        if (stopsErr) {
+            document.getElementById('routeLoading').style.display = 'none';
+            showToast('Failed to load stops', 'error');
+            return;
+        }
         stopsData = stops || [];
 
         // Load products for all stops
         if (stopsData.length > 0) {
             const stopIds = stopsData.map(s => s.id);
-            const { data: products } = await sb
+            const { data: products, error: prodErr } = await sb
                 .from('stop_products')
                 .select('*')
                 .in('route_stop_id', stopIds);
 
+            if (prodErr) console.error('products load failed:', prodErr);
             productsData = {};
             (products || []).forEach(p => {
                 if (!productsData[p.route_stop_id]) productsData[p.route_stop_id] = [];
