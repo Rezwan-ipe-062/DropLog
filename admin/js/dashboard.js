@@ -347,18 +347,22 @@ async function viewRouteDetail(routeId) {
     html += '</div>';
 
     html += '<h3 class="rd-section-title">Delivery Stops</h3>';
-    html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Time</th><th>Remark</th></tr></thead><tbody>';
+    html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Confirmed</th><th>Time</th><th>Remark</th></tr></thead><tbody>';
     (stops || []).forEach(function(stop) {
         var rowClass = stop.status === 'failed' ? 'rd-row-failed' : stop.status === 'partial' ? 'rd-row-partial' : stop.status === 'delivered' ? 'rd-row-done' : '';
         var statusBadge = stop.status === 'delivered' ? '<span class="rd-badge rd-badge-green">Delivered</span>' :
                          stop.status === 'partial' ? '<span class="rd-badge rd-badge-orange">Partial</span>' :
                          stop.status === 'failed' ? '<span class="rd-badge rd-badge-red">Failed</span>' :
                          '<span class="rd-badge rd-badge-gray">Pending</span>';
+        var confirmedBadge = stop.customer_confirmed_at
+            ? '<span class="rd-badge rd-badge-green" title="' + formatTime(stop.customer_confirmed_at) + ' ' + formatDate(stop.customer_confirmed_at) + '">Yes</span>'
+            : '<span class="rd-badge rd-badge-gray">--</span>';
         html += '<tr class="' + rowClass + '">';
         html += '<td>' + stop.stop_sequence + '</td>';
         html += '<td><strong>' + stop.customer_name + '</strong></td>';
         html += '<td>' + (stop.address || '--').substring(0, 35) + '</td>';
         html += '<td>' + statusBadge + '</td>';
+        html += '<td>' + confirmedBadge + '</td>';
         html += '<td>' + (stop.delivered_at ? formatTime(stop.delivered_at) : '--') + '</td>';
         html += '<td class="rd-remark">' + (stop.remark || '--') + '</td>';
         html += '</tr>';

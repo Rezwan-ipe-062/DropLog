@@ -23,16 +23,19 @@ async function loadContacts() {
         }
 
         empty.style.display = 'none';
-        tbody.innerHTML = data.map(c => 
-            '<tr>' +
+        var BASE = 'https://rezwan-ipe-062.github.io/DropLog/portal/?bp=';
+        tbody.innerHTML = data.map(function(c) {
+            var link = c.customer_id ? BASE + encodeURIComponent(c.customer_id) : '';
+            return '<tr>' +
             '<td>' + escapeHtml(c.customer_id || '-') + '</td>' +
             '<td><strong>' + escapeHtml(c.customer_name || '') + '</strong></td>' +
             '<td>' + escapeHtml(c.phone || '-') + '</td>' +
             '<td>' + escapeHtml(c.email || '-') + '</td>' +
             '<td>' + escapeHtml(c.district || '-') + '</td>' +
+            '<td>' + (link ? '<a href="' + link + '" target="_blank" class="portal-link" title="' + link + '">Open</a> <span class="link-copy" onclick="copyToClipboard(\'' + link + '\')">Copy</span>' : '-') + '</td>' +
             '<td><span class="link-delete" onclick="deleteContact(\'' + c.id + '\')">Delete</span></td>' +
-            '</tr>'
-        ).join('');
+            '</tr>';
+        }).join('');
 
         document.getElementById('contactCount').textContent = data.length + ' contacts';
     } catch (e) {

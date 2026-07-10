@@ -138,3 +138,27 @@ function switchWarehouse(code) {
     url.searchParams.set('wh', code.toUpperCase());
     window.location.href = url.toString();
 }
+
+function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+            showToast('Link copied to clipboard', 'success');
+        }).catch(function() {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showToast('Link copied to clipboard', 'success'); }
+    catch (e) { showToast('Could not copy link', 'error'); }
+    document.body.removeChild(ta);
+}
