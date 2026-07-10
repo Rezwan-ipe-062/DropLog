@@ -143,9 +143,11 @@
 
                 <!-- Manual add -->
                 <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
-                    <input type="text" id="addContactName" placeholder="Customer Name" style="flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="tel" id="addContactPhone" placeholder="Phone" style="width:130px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="email" id="addContactEmail" placeholder="Email" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="text" id="addContactBpId" placeholder="BP ID" style="width:100px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="text" id="addContactName" placeholder="Customer Name" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="tel" id="addContactPhone" placeholder="Phone" style="width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="email" id="addContactEmail" placeholder="Email" style="flex:1;min-width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                    <input type="text" id="addContactDistrict" placeholder="District" style="width:110px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
                     <button class="btn-small" onclick="addContact()">+ Add</button>
                 </div>
 
@@ -169,7 +171,7 @@
                     <button class="btn-small" onclick="addUser()">+ Add SO</button>
                 </div>
                 <table>
-                    <thead><tr><th>Name</th><th>Employee ID</th><th>Warehouse</th><th>Phone</th><th></th></tr></thead>
+                    <thead><tr><th>Name</th><th>Employee ID</th><th>Warehouse</th><th>Phone</th><th>PIN</th><th></th></tr></thead>
                     <tbody id="usersBody"></tbody>
                 </table>
                 <p id="noUsers" class="empty-text">No Supply Officers yet.</p>

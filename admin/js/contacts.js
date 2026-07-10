@@ -86,18 +86,28 @@ async function handleContactsUpload(event) {
 }
 
 async function addContact() {
+    const bpId = document.getElementById('addContactBpId').value.trim();
     const name = document.getElementById('addContactName').value.trim();
     const phone = document.getElementById('addContactPhone').value.trim();
     const email = document.getElementById('addContactEmail').value.trim();
+    const district = document.getElementById('addContactDistrict').value.trim();
 
     if (!name) { showToast('Enter customer name', 'warning'); return; }
 
     try {
-        await sb.from('contacts').insert({ customer_name: name, phone: phone || null, email: email || null });
+        await sb.from('contacts').insert({
+            customer_id: bpId || null,
+            customer_name: name,
+            phone: phone || null,
+            email: email || null,
+            district: district || null
+        });
 
+        document.getElementById('addContactBpId').value = '';
         document.getElementById('addContactName').value = '';
         document.getElementById('addContactPhone').value = '';
         document.getElementById('addContactEmail').value = '';
+        document.getElementById('addContactDistrict').value = '';
         showToast('Contact added', 'success');
         loadContacts();
     } catch (e) {

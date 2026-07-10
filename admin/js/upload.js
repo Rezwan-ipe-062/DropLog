@@ -361,16 +361,17 @@ async function writeToSupabase(rawRows, grouped) {
 }
 
 async function clearAllData() {
-    if (!confirm('This will delete ALL parsed data (GDs, stops, products). Routes are NOT affected. Continue?')) return;
+    if (!confirm('This will delete ALL parsed data (GDs, stops, products) for ' + getWarehouseName() + '. Routes are NOT affected. Continue?')) return;
 
     try {
         showToast('Clearing...', 'warning');
+        var wh = getWarehouseName();
 
         // Delete in order (child tables first due to foreign keys)
         await sb.from('parsed_products').delete().gt('created_at', '2000-01-01');
         await sb.from('parsed_stops').delete().gt('created_at', '2000-01-01');
-        await sb.from('available_gds').delete().gt('created_at', '2000-01-01');
-        await sb.from('raw_deliveries').delete().gt('created_at', '2000-01-01');
+        await sb.from('available_gds').delete().eq('plant_name', wh).gt('created_at', '2000-01-01');
+        await sb.from('raw_deliveries').delete().eq('plant_name', wh).gt('created_at', '2000-01-01');
 
         showToast('All parsed data cleared', 'success');
         document.getElementById('uploadStatus').textContent = '';

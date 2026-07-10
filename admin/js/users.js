@@ -11,7 +11,7 @@ async function loadUsers() {
             .from('users')
             .select('*')
             .eq('role', 'so')
-            .eq('warehouse', getWarehouseName())
+            .in('warehouse', [getWarehouseName(), getWarehouseCode()])
             .order('name');
 
         const tbody = document.getElementById('usersBody');
@@ -30,6 +30,7 @@ async function loadUsers() {
             '<td>' + escapeHtml(u.user_id) + '</td>' +
             '<td>' + escapeHtml(u.warehouse || '-') + '</td>' +
             '<td>' + escapeHtml(u.phone || '-') + '</td>' +
+            '<td><span class="link-delete" onclick="resetPin(\'' + u.id + '\', \'' + escapeHtml(u.name) + '\')">Reset PIN</span></td>' +
             '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
             '</tr>'
         ).join('');
@@ -83,6 +84,24 @@ async function deleteUser(id) {
         loadUsers();
     } catch (e) {
         console.error('deleteUser:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
+}
+
+async function resetPin(userId, userName) {
+    var newPin = prompt('Enter new 4-digit PIN for ' + userName + ':');
+    if (!newPin || newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+        showToast('PIN must be exactly 4 digits', 'warning');
+        return;
+    }
+    if (!confirm('Set new PIN for ' + userName + '?')) return;
+    try {
+        var hashed = await hashPin(newPin);
+        await sb.from('users').update({ pin: hashed }).eq('id', userId);
+        showToast('PIN reset for ' + userName, 'success');
+        loadUsers();
+    } catch (e) {
+        console.error('resetPin:', e);
         showToast(e.message || 'Something went wrong', 'error');
     }
 }
