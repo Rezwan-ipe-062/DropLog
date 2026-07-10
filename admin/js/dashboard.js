@@ -30,8 +30,6 @@ async function loadDashboard() {
         await loadActiveRoutes();
         await loadRecentRoutes();
         startDashboardPolling();
-        initAdminMap();
-        renderAdminMap();
     } catch (e) {
         console.error('loadDashboard:', e);
     }
@@ -49,12 +47,8 @@ async function loadActiveRoutes() {
         const container = document.getElementById('activeRoutes');
         if (!data || data.length === 0) {
             container.innerHTML = '<p class="empty-text">No routes currently in transit.</p>';
-            window._adminActiveRoutesData = [];
-            renderAdminMap();
             return;
         }
-
-        window._adminActiveRoutesData = data;
 
         container.innerHTML = data.map(route => {
             const stops = route.route_stops || [];
@@ -85,7 +79,6 @@ async function loadActiveRoutes() {
             return html;
         }).join('');
 
-        renderAdminMap();
     } catch (e) {
         console.error('loadActiveRoutes:', e);
     }
@@ -372,11 +365,89 @@ async function viewRouteDetail(routeId) {
         });
     }
 
+    html += '<div class="rd-section-title" style="display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span>Delivery Map</span>';
+    html += '<button class="btn-show-map" id="btnToggleMap" onclick="toggleRouteMap(\'' + routeId + '\')">Show Map</button>';
+    html += '</div>';
+    html += '<div id="routeDetailMapWrap" class="rd-map-wrap" style="display:none;"><div id="routeDetailMap" class="rd-map"></div></div>';
+
     html += '</div></div>';
 
     var existing = document.getElementById('routeDetailOverlay');
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleRouteMap(routeId) {
+    var wrap = document.getElementById('routeDetailMapWrap');
+    var btn = document.getElementById('btnToggleMap');
+    if (!wrap) return;
+    if (wrap.style.display === 'none') {
+        wrap.style.display = 'block';
+        btn.textContent = 'Hide Map';
+        setTimeout(function() { renderRouteDetailMap(routeId); }, 100);
+    } else {
+        wrap.style.display = 'none';
+        btn.textContent = 'Show Map';
+        destroyRouteDetailMap();
+    }
+}
+
+var _rdMap = null;
+
+function renderRouteDetailMap(routeId) {
+    if (_rdMap) { _rdMap.invalidateSize(); return; }
+    var container = document.getElementById('routeDetailMap');
+    if (!container) return;
+    if (typeof L === 'undefined') { setTimeout(function() { renderRouteDetailMap(routeId); }, 500); return; }
+
+    _rdMap = L.map(container, { zoomControl: false, attributionControl: false }).setView([23.685, 90.356], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(_rdMap);
+
+    var overlay = document.getElementById('routeDetailOverlay');
+    if (overlay) overlay._rdMapRouteId = routeId;
+
+    loadRouteDetailMapData(routeId);
+}
+
+async function loadRouteDetailMapData(routeId) {
+    if (!_rdMap) return;
+    var { data: stops } = await sb.from('route_stops').select('*').eq('route_id', routeId).order('stop_sequence');
+    if (!stops) return;
+
+    var delivered = stops.filter(function(s) { return s.status === 'delivered' || s.status === 'partial'; });
+    var allPoints = [];
+    var trailPoints = [];
+
+    delivered.forEach(function(stop) {
+        var lat = parseFloat(stop.gps_lat);
+        var lng = parseFloat(stop.gps_lng);
+        if (!lat || !lng) return;
+        var latlng = [lat, lng];
+        allPoints.push(latlng);
+        trailPoints.push(latlng);
+        var color = stop.status === 'delivered' ? '#00A94F' : '#E65100';
+        var marker = L.circleMarker(latlng, {
+            radius: 8, color: color, fillColor: color, fillOpacity: 0.9, weight: 2
+        }).addTo(_rdMap);
+        marker.bindPopup('<b>' + escapeHtml(stop.customer_name) + '</b>' +
+            (stop.delivered_at ? '<br>' + formatTime(stop.delivered_at) : '') +
+            '<br>Stop ' + stop.stop_sequence);
+    });
+
+    if (trailPoints.length >= 2) {
+        L.polyline(trailPoints, { color: '#00A94F', weight: 3, opacity: 0.7, dashArray: '8, 6' }).addTo(_rdMap);
+    }
+
+    if (allPoints.length > 0) {
+        _rdMap.fitBounds(allPoints.length === 1
+            ? [allPoints[0], [allPoints[0][0] + 0.01, allPoints[0][1] + 0.01]]
+            : allPoints, { padding: [30, 30], maxZoom: 15 });
+    }
+}
+
+function destroyRouteDetailMap() {
+    if (_rdMap) { _rdMap.remove(); _rdMap = null; }
 }
 
 function closeRouteDetail() {

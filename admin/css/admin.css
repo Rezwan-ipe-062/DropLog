@@ -164,8 +164,11 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .stat-card.red .stat-value { color: var(--red); }
 .stat-card.orange .stat-value { color: var(--orange); }
 
-.map-card { padding: 16px; }
-.admin-route-map { height: 340px; border-radius: 8px; overflow: hidden; border: 1px solid var(--gray-200); margin-top: 8px; }
+/* Route Detail Map */
+.rd-map-wrap { margin-top: 12px; display: none; }
+.rd-map { height: 340px; border-radius: 8px; overflow: hidden; border: 1px solid var(--gray-200); }
+.btn-show-map { padding: 6px 14px; background: var(--syn-blue); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-show-map:hover { background: var(--syn-blue-dark); }
 
 .card {
     background: white;
