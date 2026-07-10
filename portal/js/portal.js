@@ -120,12 +120,12 @@ async function pollRefresh() {
         var latest = sorted[0] || null;
         var needsAction = openIssues.length + failed;
 
-        renderHeroStats(delivered, inTransit, needsAction, completedTotal);
-        renderGlassCard(stops, latest, routeStatuses);
-        renderSnapshot(stops, delivered, partial, openIssues.length);
-        renderDispatch(stops, routeStatuses);
-        renderExceptions(openIssues);
-        renderPod(stops, completedTotal, partial, productsByStop);
+        try { renderHeroStats(delivered, inTransit, needsAction, completedTotal); } catch (e) { console.error('hero stats error', e); }
+        try { renderGlassCard(stops, latest, routeStatuses); } catch (e) { console.error('glass card error', e); }
+        try { renderSnapshot(stops, delivered, partial, openIssues.length); } catch (e) { console.error('snapshot error', e); }
+        try { renderDispatch(stops, routeStatuses); } catch (e) { console.error('dispatch error', e); $('dispatchList') && ($('dispatchList').innerHTML = '<div class="dispatch-empty"><p>Dispatch board unavailable</p></div>'); }
+        try { renderExceptions(openIssues); } catch (e) { console.error('exceptions error', e); $('exceptionList') && ($('exceptionList').innerHTML = '<div class="exception-empty"><p>Exceptions unavailable</p></div>'); }
+        try { renderPod(stops, completedTotal, partial, productsByStop); } catch (e) { console.error('pod error', e); }
 
         var name = latest ? (latest.customer_name || 'Distributor') : 'Distributor';
         $('heroTitle').textContent = 'Know where every delivery stands, ' + name.split(' ')[0] + '.';
@@ -286,13 +286,13 @@ async function handleSearch() {
         $('bottomNav').style.display = 'grid';
         $('dashboard').style.display = 'block';
 
-        renderHeroStats(delivered, inTransit, needsAction, completedTotal);
-        renderGlassCard(stops, latest, routeStatuses);
-        renderSnapshot(stops, delivered, partial, openIssues.length);
-        renderDispatch(stops, routeStatuses);
-        renderMap(stops);
-        renderExceptions(openIssues);
-        renderPod(stops, completedTotal, partial, productsByStop);
+        try { renderHeroStats(delivered, inTransit, needsAction, completedTotal); } catch (e) { console.error('hero stats error', e); }
+        try { renderGlassCard(stops, latest, routeStatuses); } catch (e) { console.error('glass card error', e); }
+        try { renderSnapshot(stops, delivered, partial, openIssues.length); } catch (e) { console.error('snapshot error', e); }
+        try { renderDispatch(stops, routeStatuses); } catch (e) { console.error('dispatch error', e); $('dispatchList') && ($('dispatchList').innerHTML = '<div class="dispatch-empty"><p>Could not load dispatch board</p></div>'); }
+        try { renderMap(stops); } catch (e) { console.error('map error', e); $('portalMap') && ($('portalMap').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:350px;color:var(--muted);background:var(--bg);border-radius:16px;">Map unavailable</div>'); }
+        try { renderExceptions(openIssues); } catch (e) { console.error('exceptions error', e); $('exceptionList') && ($('exceptionList').innerHTML = '<div class="exception-empty"><p>Exceptions unavailable</p></div>'); }
+        try { renderPod(stops, completedTotal, partial, productsByStop); } catch (e) { console.error('pod error', e); }
 
         var name = latest ? (latest.customer_name || 'Distributor') : 'Distributor';
         $('heroTitle').textContent = 'Know where every delivery stands, ' + name.split(' ')[0] + '.';
@@ -321,6 +321,7 @@ function renderHeroStats(active, transit, needs, pod) {
 
 // ---- Glass Card ----
 function renderGlassCard(stops, latest, routeStatuses) {
+    try {
     if (!latest || !latest.routes) {
         $('glassRouteCode').textContent = '--';
         $('glassRouteName').textContent = 'No active route';
@@ -363,6 +364,7 @@ function renderGlassCard(stops, latest, routeStatuses) {
     }
     if (done > 0 && st !== 'completed') $('fcPodChip').style.display = 'flex';
     if (st === 'delayed') $('fcDelayChip').style.display = 'flex';
+    } catch (e) { console.error('glassCard render error', e); }
 }
 
 function hideAllChips() {
@@ -433,6 +435,7 @@ function renderDispatch(stops, routeStatuses) {
 var _map = null;
 
 function renderMap(stops) {
+    try {
     if (_map) { _map.remove(); _map = null; }
     var container = $('portalMap');
     if (!container) return;
@@ -467,6 +470,7 @@ function renderMap(stops) {
 
     if (latlngs.length === 1) { _map.setView(latlngs[0], 13); }
     else if (latlngs.length > 0) { _map.fitBounds(latlngs, { padding: [30, 30], maxZoom: 14 }); }
+    } catch (e) { console.error('map render error', e); $('portalMap') && ($('portalMap').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:350px;color:var(--muted);background:var(--bg);border-radius:16px;">Map unavailable</div>'); }
 }
 
 // ---- Exceptions ----
@@ -496,11 +500,12 @@ function renderExceptions(issues) {
 
 // ---- POD ----
 function renderPod(stops, completed, partial, productsByStop) {
+    try {
     $('podCompleted').textContent = completed + ' stops' + (partial > 0 ? ' (' + partial + ' partial)' : '');
     if (completed > 0) { $('podItem1').classList.add('pod-done'); }
 
     var totalQty = 0;
-    Object.keys(productsByStop).forEach(function(sid) {
+    if (productsByStop) Object.keys(productsByStop).forEach(function(sid) {
         productsByStop[sid].forEach(function(p) {
             totalQty += parseFloat(p.delivered_quantity || p.quantity || 0);
         });
@@ -514,4 +519,5 @@ function renderPod(stops, completed, partial, productsByStop) {
 
     $('podPartial').textContent = partial > 0 ? partial + ' stops' : 'None';
     if (partial > 0) { $('podItem4').classList.add('pod-done'); $('podCheck4').classList.add('pod-check'); }
+    } catch (e) { console.error('pod render error', e); }
 }
