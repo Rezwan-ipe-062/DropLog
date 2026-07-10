@@ -57,8 +57,96 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', saved);
 })();
 
+// ---- Auto-Refresh ----
+var _currentBpId = null;
+var _refreshTimer = null;
+var _lastStops = [];
+
+function stopAutoRefresh() {
+    if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+    _currentBpId = null;
+}
+
+function startAutoRefresh(bpId) {
+    stopAutoRefresh();
+    _currentBpId = bpId;
+    _refreshTimer = setInterval(pollRefresh, 30000);
+}
+
+async function pollRefresh() {
+    if (!_currentBpId || !sb) return;
+    try {
+        var { data: stops, error } = await sb
+            .from('route_stops')
+            .select('*, routes(route_code, route_name, dispatch_date, vehicle_number, vendor_name, plant_name, status, started_at, completed_at, total_stops, completed_stops, failed_stops)')
+            .eq('customer_id', _currentBpId)
+            .order('delivered_at', { ascending: false, nullsFirst: false })
+            .limit(50);
+        if (error) throw error;
+        stops = stops || [];
+
+        var routeIds = [];
+        stops.forEach(function(s) { if (s.route_id && routeIds.indexOf(s.route_id) === -1) routeIds.push(s.route_id); });
+
+        var stopIds = stops.map(function(s) { return s.id; });
+        var productsByStop = {};
+        if (stopIds.length > 0) {
+            var { data: prods } = await sb.from('stop_products').select('*').in('route_stop_id', stopIds);
+            (prods || []).forEach(function(p) {
+                if (!productsByStop[p.route_stop_id]) productsByStop[p.route_stop_id] = [];
+                productsByStop[p.route_stop_id].push(p);
+            });
+        }
+
+        var { data: issues } = await sb.from('issues').select('*').in('route_id', routeIds).order('reported_at', { ascending: false });
+        issues = issues || [];
+
+        var delivered = stops.filter(function(s) { return s.status === 'delivered'; }).length;
+        var partial = stops.filter(function(s) { return s.status === 'partial'; }).length;
+        var failed = stops.filter(function(s) { return s.status === 'failed'; }).length;
+        var inTransit = stops.filter(function(s) { return s.status === 'in_transit'; }).length;
+        var completedTotal = delivered + partial;
+        var openIssues = issues.filter(function(i) { return !i.acknowledged; });
+
+        var routeStatuses = {};
+        stops.forEach(function(s) {
+            if (s.routes && s.route_id && !routeStatuses[s.route_id]) routeStatuses[s.route_id] = s.routes.status || 'pending';
+        });
+        var activeRouteCount = Object.keys(routeStatuses).filter(function(id) { return routeStatuses[id] === 'in_transit'; }).length;
+
+        var sorted = stops.slice().sort(function(a, b) {
+            return (b.delivered_at || b.created_at || '').localeCompare(a.delivered_at || a.created_at || '');
+        });
+        var latest = sorted[0] || null;
+        var needsAction = openIssues.length + failed;
+
+        renderHeroStats(delivered, inTransit, needsAction, completedTotal);
+        renderGlassCard(stops, latest, routeStatuses);
+        renderSnapshot(stops, delivered, partial, openIssues.length);
+        renderDispatch(stops, routeStatuses);
+        renderExceptions(openIssues);
+        renderPod(stops, completedTotal, partial, productsByStop);
+
+        var name = latest ? (latest.customer_name || 'Distributor') : 'Distributor';
+        $('heroTitle').textContent = 'Know where every delivery stands, ' + name.split(' ')[0] + '.';
+        $('heroDesc').textContent = stops.length + ' deliveries tracked · ' + activeRouteCount + ' active routes';
+        $('snapshotTotal').textContent = stops.length + ' deliveries';
+        $('dispatchCount').textContent = routeIds.length + ' routes';
+        $('exceptionCount').textContent = openIssues.length;
+
+        if (_lastStops.length > 0 && stops.length > _lastStops.length) {
+            var diff = stops.length - _lastStops.length;
+            showToast(diff + ' new delivery update' + (diff > 1 ? 's' : ''), 'info');
+        }
+        _lastStops = stops;
+    } catch (e) {
+        console.error('Auto-refresh error:', e);
+    }
+}
+
 // ---- Modal ----
 function showBpModal() {
+    stopAutoRefresh();
     $('bpModal').style.display = 'flex';
     $('bpInput').value = '';
     $('bpInput').focus();
@@ -110,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ---- Main Search ----
 async function handleSearch() {
+    stopAutoRefresh();
     var bpId = $('bpInput').value.trim();
     var errEl = $('searchError');
 
@@ -211,6 +300,8 @@ async function handleSearch() {
         $('snapshotTotal').textContent = stops.length + ' deliveries';
         $('dispatchCount').textContent = routeIds.length + ' routes';
         $('exceptionCount').textContent = openIssues.length;
+        startAutoRefresh(bpId);
+        _lastStops = stops;
         window.scrollTo(0, 0);
     } catch (e) {
         console.error(e);
