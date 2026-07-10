@@ -75,7 +75,7 @@ async function handleFinish() {
             currentStopIndex = null;
             routeStartTime = null;
             document.getElementById('routeInput').value = '';
-            showScreen('screenRoute');
+            loadMyRoutes();
         }, 1500);
     } catch (e) {
         console.error('handleFinish:', e);

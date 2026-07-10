@@ -9,7 +9,7 @@ async function loadDashboard() {
 
         const [routesRes, issuesRes] = await Promise.all([
             sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops').eq('plant_name', wh),
-            sb.from('issues').select('id', { count: 'exact' }).eq('acknowledged', false)
+            sb.from('issues').select('*, routes!inner(plant_name)').eq('routes.plant_name', wh).eq('acknowledged', false)
         ]);
 
         if (routesRes.error) { console.error('dashboard routes query:', routesRes.error); }
@@ -19,7 +19,7 @@ async function loadDashboard() {
         const pending = routes.filter(r => r.status === 'pending').length;
         const inTransit = routes.filter(r => r.status === 'in_transit').length;
         const completed = routes.filter(r => r.status === 'completed').length;
-        const openIssues = issuesRes.count || 0;
+        const openIssues = (issuesRes.data || []).length;
 
         document.getElementById('statTotal').textContent = routes.length;
         document.getElementById('statPending').textContent = pending;
@@ -205,7 +205,8 @@ async function checkIssues() {
     try {
         const { data } = await sb
             .from('issues')
-            .select('*, routes(route_code, route_name)')
+            .select('*, routes!inner(route_code, route_name, plant_name)')
+            .eq('routes.plant_name', getWarehouseName())
             .eq('acknowledged', false)
             .order('reported_at', { ascending: false })
             .limit(1);
@@ -230,11 +231,15 @@ function showIssueAlert(issue) {
 
 async function dismissIssue() {
     try {
+        const { data: whRoutes } = await sb.from('routes').select('id').eq('plant_name', getWarehouseName());
+        const routeIds = (whRoutes || []).map(r => r.id);
+        if (routeIds.length === 0) return;
+
         await sb.from('issues').update({
             acknowledged: true,
             acknowledged_by: currentAdmin ? currentAdmin.id : null,
             acknowledged_at: new Date().toISOString()
-        }).eq('acknowledged', false);
+        }).in('route_id', routeIds).eq('acknowledged', false);
 
         document.getElementById('issueAlertPopup').classList.remove('visible');
         loadDashboard();

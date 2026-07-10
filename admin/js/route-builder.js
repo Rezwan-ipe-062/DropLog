@@ -18,6 +18,7 @@ async function loadAvailableGDs() {
             .from('available_gds')
             .select('*')
             .eq('status', 'available')
+            .eq('plant_name', wh)
             .order('posting_date', { ascending: false });
 
         if (error) {
@@ -300,7 +301,13 @@ async function createRoute() {
     const soId = document.getElementById('rfSO').value;
     const routeName = document.getElementById('rfName').value.trim();
 
-    if (!vehicle) { showToast('Enter vehicle number', 'warning'); return; }
+    if (!vehicle) {
+        showToast('Enter vehicle number', 'warning');
+        isCreatingRoute = false;
+        document.querySelector('.btn-create-route').disabled = false;
+        document.querySelector('.btn-create-route').textContent = 'Create Route';
+        return;
+    }
 
     const selGDs = availableGDs.filter(g => selectedGDs.has(g.group_delivery_number));
     const districts = [...new Set(selGDs.map(g => g.district))];
