@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DropLog · Distributor Portal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="css/portal.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <meta name="theme-color" content="#00457C">
+</head>
+<body>
+
+<!-- BP ID Modal -->
+<div class="modal-overlay" id="bpModal">
+  <div class="modal-card">
+    <div class="modal-icon">
+      <img src="icon-192.png" alt="DropLog" class="brand-img">
+    </div>
+    <h1>DropLog</h1>
+    <p class="modal-sub">Distributor Portal — Track your deliveries</p>
+    <div class="modal-field">
+      <input type="text" id="bpInput" placeholder="Enter BP ID" inputmode="numeric" maxlength="10" autofocus autocomplete="off">
+      <button onclick="handleSearch()">Access</button>
+    </div>
+    <p class="modal-hint">Use your Syngenta Business Partner ID</p>
+    <div id="searchError" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header" id="appTopbar" style="display:none;">
+  <div class="header-inner">
+    <div class="header-brand">
+      <img src="icon-192.png" alt="DropLog" class="brand-img">
+      <span class="header-divider"></span>
+      <span class="header-title">DropLog</span>
+      <span class="header-badge">Distributor</span>
+    </div>
+    <div class="header-right">
+      <span class="bp-label" id="topbarBpLabel">BP --</span>
+      <button class="btn-header" onclick="showBpModal()">Change</button>
+      <button class="btn-theme" onclick="toggleTheme()" title="Toggle dark mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Loading -->
+<div class="load-screen" id="loadScreen" style="display:none;">
+  <div class="load-ring"></div>
+  <span id="loadText">Loading your deliveries…</span>
+</div>
+
+<!-- Dashboard -->
+<main id="dashboard" style="display:none;">
+
+  <!-- Stats Bar -->
+  <section class="stats-bar">
+    <div class="stats-row" id="heroStats">
+      <div class="stat-card" id="statActiveCard">
+        <span class="stat-value" id="statActive">0</span>
+        <span class="stat-label">Active deliveries</span>
+      </div>
+      <div class="stat-card" id="statTransitCard">
+        <span class="stat-value" id="statTransit">0</span>
+        <span class="stat-label">In transit</span>
+      </div>
+      <div class="stat-card" id="statDelayCard">
+        <span class="stat-value" id="statDelay">0</span>
+        <span class="stat-label">Needs action</span>
+      </div>
+      <div class="stat-card" id="statPodCard">
+        <span class="stat-value" id="statPod">0</span>
+        <span class="stat-label">POD confirmed</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Status + Headline -->
+  <section class="section" id="hero">
+    <div class="section-row">
+      <div class="section-main">
+        <h1 class="page-title" id="heroTitle">Track your deliveries</h1>
+        <p class="page-desc" id="heroDesc">Live dispatch, ETA, and exceptions.</p>
+      </div>
+      <div class="status-card">
+        <div class="status-head">
+          <span class="status-label">Live Status</span>
+          <span class="chip" id="glassStatus">Pending</span>
+        </div>
+        <div class="status-body">
+          <div class="status-route">
+            <strong id="glassRouteCode">DO-001</strong>
+            <span id="glassRouteName">Loading…</span>
+          </div>
+          <div class="status-progress">
+            <span>Depot</span>
+            <div class="progress-track">
+              <div class="progress-fill" id="gpFill" style="width:0%"></div>
+            </div>
+            <span id="gpDest">Distributor</span>
+          </div>
+          <div class="status-meta" id="glassMeta">
+            <span><strong>ETA</strong> <span id="glassEta">--</span></span>
+            <span><strong>Vehicle</strong> <span id="glassVehicle">--</span></span>
+            <span><strong>Progress</strong> <span id="glassProgress">0</span>%</span>
+          </div>
+          <div class="floating-chips" id="glassChips" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+            <span class="chip chip-green" id="fcTransitChip" style="display:none;">In transit</span>
+            <span class="chip chip-blue" id="fcEtaChip" style="display:none;">ETA <span id="fcEtaTime">--</span></span>
+            <span class="chip chip-amber" id="fcPodChip" style="display:none;">POD received</span>
+            <span class="chip chip-red" id="fcDelayChip" style="display:none;">Delayed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Snapshot Grid -->
+  <section class="section" id="stats">
+    <div class="section-head">
+      <h2>Today's snapshot</h2>
+      <span class="badge" id="snapshotTotal">0 deliveries</span>
+    </div>
+    <div class="snap-grid">
+      <div class="card card-primary" onclick="document.getElementById('dispatch').scrollIntoView({behavior:'smooth'})">
+        <div class="card-icon card-icon-green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>
+        </div>
+        <div class="card-body">
+          <span class="card-val" id="snapActive">0</span>
+          <span class="card-lbl">Active deliveries</span>
+          <div class="card-track"><div class="card-fill" id="snapActiveBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="card" onclick="document.getElementById('exceptions').scrollIntoView({behavior:'smooth'})">
+        <div class="card-icon card-icon-amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+        </div>
+        <div class="card-body">
+          <span class="card-val" id="snapExceptions">0</span>
+          <span class="card-lbl">Exceptions</span>
+          <span class="card-tag" id="snapExceptionTag">Needs action</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon card-icon-purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+        </div>
+        <div class="card-body">
+          <span class="card-val" id="snapPod">0</span>
+          <span class="card-lbl">POD confirmed</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon card-icon-leaf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="card-body">
+          <span class="card-val" id="snapCutoffTime">3:00 PM</span>
+          <span class="card-lbl">Today's cut-off</span>
+          <span class="card-sub" id="snapCutoffLabel">Order release</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dispatch Board -->
+  <section class="section" id="dispatch">
+    <div class="section-head">
+      <h2>Dispatch board</h2>
+      <span class="badge" id="dispatchCount">0 routes</span>
+    </div>
+    <div class="dispatch-list" id="dispatchList">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/></svg>
+        <p>No active routes</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Map -->
+  <section class="section" id="routemap">
+    <div class="section-head">
+      <h2>Route map</h2>
+    </div>
+    <div class="map-wrap">
+      <div id="portalMap" class="map-el"></div>
+    </div>
+  </section>
+
+  <!-- Exceptions + POD -->
+  <section class="section section-split" id="exceptions">
+    <div class="split-panel">
+      <div class="section-head">
+        <h2>Exceptions</h2>
+        <span class="badge" id="exceptionCount">0</span>
+      </div>
+      <div class="exception-list" id="exceptionList">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+          <p>No exceptions — everything on track</p>
+        </div>
+      </div>
+    </div>
+    <div class="split-panel">
+      <div class="section-head">
+        <h2>POD summary</h2>
+      </div>
+      <div class="pod-list">
+        <div class="pod-item pod-done" id="podItem1">
+          <div class="pod-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="pod-info">
+            <strong>Deliveries completed</strong>
+            <span id="podCompleted">0 stops</span>
+          </div>
+        </div>
+        <div class="pod-item" id="podItem2">
+          <div class="pod-check" id="podCheck2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="pod-info">
+            <strong>Quantity confirmed</strong>
+            <span id="podQty">-- units</span>
+          </div>
+        </div>
+        <div class="pod-item" id="podItem3">
+          <div class="pod-check" id="podCheck3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="pod-info">
+            <strong>Latest delivery</strong>
+            <span id="podTime">--</span>
+          </div>
+        </div>
+        <div class="pod-item" id="podItem4">
+          <div class="pod-check" id="podCheck4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="pod-info">
+            <strong>Partial deliveries</strong>
+            <span id="podPartial">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav" id="bottomNav" style="display:none;">
+  <button class="nav-item active" data-section="hero" onclick="navigate('hero')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="nav-item" data-section="dispatch" onclick="navigate('dispatch')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>
+    <span>Track</span>
+  </button>
+  <button class="nav-item nav-center" data-section="exceptions" onclick="navigate('exceptions')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+  </button>
+  <button class="nav-item" data-section="routemap" onclick="navigate('routemap')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span>Map</span>
+  </button>
+  <button class="nav-item" data-section="support" onclick="navigate('support')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Support</span>
+  </button>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="js/portal.js"></script>
+</body>
+</html>

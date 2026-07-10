@@ -201,6 +201,26 @@ ALTER TABLE issue_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
 
 -- Grant full access to any authenticated user (development mode)
+-- DROP first to make idempotent (policy names are unique per table)
+DROP POLICY IF EXISTS "Enable all for authenticated" ON users;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON contacts;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON raw_deliveries;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON available_gds;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON parsed_stops;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON parsed_products;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON routes;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON route_stops;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON stop_products;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON delivery_events;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON issues;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON notifications;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON vendor_settlements;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON fleet_vehicles;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON vendors;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON route_templates;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON issue_types;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON activity_log;
+
 CREATE POLICY "Enable all for authenticated" ON users FOR ALL USING (true);
 CREATE POLICY "Enable all for authenticated" ON contacts FOR ALL USING (true);
 CREATE POLICY "Enable all for authenticated" ON raw_deliveries FOR ALL USING (true);

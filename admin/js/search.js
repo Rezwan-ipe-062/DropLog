@@ -26,6 +26,7 @@ async function executeSearch(query) {
     if (!sb) return;
 
     try {
+        var safeQuery = query.replace(/[%{},]/g, '');
         const results = document.getElementById('searchResults');
         results.innerHTML = '<p class="searching">Searching...</p>';
 
@@ -37,7 +38,7 @@ async function executeSearch(query) {
             const { data: stops } = await sb
                 .from('route_stops')
                 .select('*, routes!inner(route_code, route_name, status)')
-                .or('customer_name.ilike.%' + query + '%,delivery_documents.cs.{' + query + '}')
+                .or('customer_name.ilike.%' + safeQuery + '%,delivery_documents.cs.{' + safeQuery + '}')
                 .eq('routes.plant_name', wh)
                 .limit(20);
 
@@ -59,7 +60,7 @@ async function executeSearch(query) {
             const { data: gds } = await sb
                 .from('available_gds')
                 .select('*')
-                .or('group_delivery_number.ilike.%' + query + '%,district.ilike.%' + query + '%')
+                .or('group_delivery_number.ilike.%' + safeQuery + '%,district.ilike.%' + safeQuery + '%')
                 .eq('plant_name', wh)
                 .limit(10);
 

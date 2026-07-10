@@ -47,7 +47,7 @@ async function addUser() {
     const pin = document.getElementById('newSOPin').value.trim();
     const phone = document.getElementById('newSOPhone').value.trim();
 
-    if (!name || !userId || pin.length !== 4) {
+    if (!name || !userId || !/^\d{4}$/.test(pin)) {
         showToast('Fill all fields (PIN must be 4 digits)', 'warning');
         return;
     }
@@ -55,12 +55,17 @@ async function addUser() {
     try {
         const hashedPin = await hashPin(pin);
 
-        const { error } = await sb.from('users').insert({
-            user_id: userId, name, pin: hashedPin, pin_plain: pin, role: 'so', 
+        var payload = {
+            user_id: userId, name: name, pin: hashedPin, role: 'so',
             phone: phone || null, warehouse: getWarehouseName()
-        });
+        };
 
-        if (error) {
+        var { error } = await sb.from('users').insert(Object.assign({ pin_plain: pin }, payload));
+
+        if (error && (error.code === '42703' || (error.message && error.message.indexOf('column') >= 0 && error.message.indexOf('pin_plain') >= 0))) {
+            var { error: retryErr } = await sb.from('users').insert(payload);
+            if (retryErr) { showToast('Error: ' + retryErr.message, 'error'); return; }
+        } else if (error) {
             showToast('Error: ' + error.message, 'error');
             return;
         }
@@ -98,7 +103,14 @@ async function resetPin(userId, userName) {
     if (!confirm('Set new PIN for ' + userName + '?')) return;
     try {
         var hashed = await hashPin(newPin);
-        await sb.from('users').update({ pin: hashed, pin_plain: newPin }).eq('id', userId);
+        var { error } = await sb.from('users').update({ pin: hashed, pin_plain: newPin }).eq('id', userId);
+        if (error && (error.code === '42703' || (error.message && error.message.indexOf('column') >= 0 && error.message.indexOf('pin_plain') >= 0))) {
+            var { error: retryErr } = await sb.from('users').update({ pin: hashed }).eq('id', userId);
+            if (retryErr) { showToast('Error: ' + retryErr.message, 'error'); return; }
+        } else if (error) {
+            showToast('Error: ' + error.message, 'error');
+            return;
+        }
         showToast('PIN reset for ' + userName, 'success');
         loadUsers();
     } catch (e) {

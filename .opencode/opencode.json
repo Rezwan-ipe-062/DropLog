@@ -1,0 +1,48 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "build",
+  "small_model": "anthropic/claude-haiku-4-5",
+  "instructions": [
+    "AGENTS.md",
+    "instructions/INSTRUCTIONS.md"
+  ],
+  "skills": {
+    "paths": [
+      ".opencode/skills"
+    ]
+  },
+  "commands": [
+    ".opencode/commands"
+  ],
+  "tools": {
+    "paths": [
+      ".opencode/tools"
+    ]
+  },
+  "agent": {
+    "build": {
+      "description": "Primary coding agent for DropLog development",
+      "mode": "primary",
+      "model": "anthropic/claude-sonnet-4-5",
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true,
+        "read": true,
+        "changed-files": true,
+        "glob": true,
+        "grep": true,
+        "notify": true,
+        "task": true,
+        "todowrite": true,
+        "question": true,
+        "webfetch": true
+      },
+      "instructions": [
+        "You are a full-stack web developer building DropLog, a route delivery tracking system.",
+        "The system has 3 portals: SO App (mobile), Admin Panel (desktop), Distributor Portal.",
+        "Always follow Gstack design-review, design-html, and cso security skills."
+      ]
+    }
+  }
+}

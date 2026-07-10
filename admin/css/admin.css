@@ -170,6 +170,20 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .btn-show-map { padding: 6px 14px; background: var(--syn-blue); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .btn-show-map:hover { background: var(--syn-blue-dark); }
 
+/* Export button */
+.btn-export {
+    padding: 5px 12px;
+    background: var(--syn-green);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    vertical-align: middle;
+}
+.btn-export:hover { background: var(--syn-green-dark); }
+
 .card {
     background: white;
     padding: 20px;

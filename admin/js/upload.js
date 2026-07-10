@@ -251,7 +251,7 @@ async function writeToSupabase(rawRows, grouped) {
         }));
 
         // Delete existing and re-insert (clean slate)
-        await sb.from('available_gds').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await sb.from('available_gds').delete().eq('plant_name', getWarehouseName());
 
         const { data: insertedGDs, error: gdErr } = await sb
             .from('available_gds')
@@ -368,8 +368,16 @@ async function clearAllData() {
         var wh = getWarehouseName();
 
         // Delete in order (child tables first due to foreign keys)
-        await sb.from('parsed_products').delete().gt('created_at', '2000-01-01');
-        await sb.from('parsed_stops').delete().gt('created_at', '2000-01-01');
+        var gdIds = (await sb.from('available_gds').select('id').eq('plant_name', wh)).data || [];
+        var gdIdList = gdIds.map(function(g) { return g.id; });
+        if (gdIdList.length > 0) {
+            var stopIds = (await sb.from('parsed_stops').select('id').in('gd_id', gdIdList)).data || [];
+            var stopIdList = stopIds.map(function(s) { return s.id; });
+            if (stopIdList.length > 0) {
+                await sb.from('parsed_products').delete().in('stop_id', stopIdList);
+            }
+            await sb.from('parsed_stops').delete().in('gd_id', gdIdList);
+        }
         await sb.from('available_gds').delete().eq('plant_name', wh).gt('created_at', '2000-01-01');
         await sb.from('raw_deliveries').delete().eq('plant_name', wh).gt('created_at', '2000-01-01');
 

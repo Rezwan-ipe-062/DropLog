@@ -1,6 +1,10 @@
-node_modules/
+﻿node_modules/
 .env
 .env.local
 *.log
 .DS_Store
 Thumbs.db
+Necessary Files and Pictures/
+backend/
+DropLog_SOP.docx
+*.ttf

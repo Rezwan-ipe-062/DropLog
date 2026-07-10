@@ -49,23 +49,27 @@ async function addVehicle() {
 
     if (!vehicle) { showToast('Enter vehicle number', 'warning'); return; }
 
-    const { error } = await sb.from('fleet_vehicles').insert({
-        vehicle_number: vehicle,
-        driver_name: driver || null,
-        driver_phone: phone || null,
-        capacity_kg: capacity ? Number(capacity) : null,
-        warehouse_code: getWarehouseCode()
-    });
+    try {
+        const { error } = await sb.from('fleet_vehicles').insert({
+            vehicle_number: vehicle,
+            driver_name: driver || null,
+            driver_phone: phone || null,
+            capacity_kg: capacity ? Number(capacity) : null,
+            warehouse_code: getWarehouseCode()
+        });
 
-    if (error) { showToast(error.message, 'error'); return; }
+        if (error) { showToast(error.message, 'error'); return; }
 
-    document.getElementById('fvVehicle').value = '';
-    document.getElementById('fvDriver').value = '';
-    document.getElementById('fvPhone').value = '';
-    document.getElementById('fvCapacity').value = '';
+        document.getElementById('fvVehicle').value = '';
+        document.getElementById('fvDriver').value = '';
+        document.getElementById('fvPhone').value = '';
+        document.getElementById('fvCapacity').value = '';
 
-    showToast('Vehicle added', 'success');
-    loadVehicles();
+        showToast('Vehicle added', 'success');
+        loadVehicles();
+    } catch (e) {
+        showToast(e.message || 'Failed to add vehicle', 'error');
+    }
 }
 
 async function deleteVehicle(id) {

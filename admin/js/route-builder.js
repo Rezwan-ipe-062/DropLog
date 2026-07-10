@@ -28,7 +28,7 @@ async function loadAvailableGDs() {
         }
 
         availableGDs = gds || [];
-        console.log('[DEBUG] Loaded GDs:', availableGDs.length, 'for warehouse:', wh);
+        // console.log('[DEBUG] Loaded GDs:', availableGDs.length, 'for warehouse:', wh);
 
         // Load stops separately
         if (availableGDs.length > 0) {
@@ -44,7 +44,7 @@ async function loadAvailableGDs() {
                 if (!stopsCache[s.gd_id]) stopsCache[s.gd_id] = [];
                 stopsCache[s.gd_id].push(s);
             });
-            console.log('Loaded stops:', (stops || []).length);
+            // console.log('Loaded stops:', (stops || []).length);
         }
 
         selectedGDs.clear();
@@ -72,7 +72,7 @@ function renderRouteBuilder() {
     const container = document.getElementById('routeBuilderContent');
     if (!container) return;
 
-    console.log('[DEBUG] renderRouteBuilder: availableGDs.length=' + availableGDs.length + ' selectedGDs.size=' + selectedGDs.size);
+    // console.log('[DEBUG] renderRouteBuilder: availableGDs.length=' + availableGDs.length + ' selectedGDs.size=' + selectedGDs.size);
 
     if (availableGDs.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>No available GDs. Upload an SAP export first.</p></div>';
@@ -84,7 +84,7 @@ function renderRouteBuilder() {
         const singleStop = availableGDs.filter(g => !g.is_multi_stop);
         const bundles = groupSinglesIntoBundles(singleStop);
 
-        console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
+        // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
         let leftHtml = '';
 
@@ -121,9 +121,9 @@ function renderRouteBuilder() {
             formHtml +
             '<button class="rb-form-close" onclick="closeRouteForm()">X</button>' +
             '</div></div>';
-        console.log('[DEBUG] renderRouteBuilder: rendered OK');
+        // console.log('[DEBUG] renderRouteBuilder: rendered OK');
     } catch (e) {
-        console.error('[DEBUG] renderRouteBuilder CRASH:', e);
+        console.error('renderRouteBuilder:', e);
         container.innerHTML = '<div class="empty-state"><p style="color:var(--red)">Render error: ' + escapeHtml(e.message) + '</p></div>';
         showToast('Render error — see console', 'error');
     }
@@ -131,7 +131,7 @@ function renderRouteBuilder() {
 
 function renderGDCard(gd) {
     if (!gd || !gd.group_delivery_number) {
-        console.warn('[DEBUG] renderGDCard: invalid gd', gd);
+        // console.warn('[DEBUG] renderGDCard: invalid gd', gd);
         return '';
     }
 
@@ -173,7 +173,7 @@ function renderGDCard(gd) {
 
 function renderBundleCard(bundle, idx) {
     if (!bundle || !bundle.gds) {
-        console.warn('[DEBUG] renderBundleCard: invalid bundle', bundle);
+        // console.warn('[DEBUG] renderBundleCard: invalid bundle', bundle);
         return '';
     }
 
@@ -233,7 +233,7 @@ function renderRouteForm() {
 // ---- Selection ----
 
 function toggleGDSelection(gdNum) {
-    console.log('[DEBUG] toggleGDSelection: gdNum=' + gdNum + ' wasSelected=' + selectedGDs.has(gdNum));
+    // console.log('[DEBUG] toggleGDSelection: gdNum=' + gdNum + ' wasSelected=' + selectedGDs.has(gdNum));
     if (selectedGDs.has(gdNum)) selectedGDs.delete(gdNum);
     else selectedGDs.add(gdNum);
     renderRouteBuilder();
@@ -308,6 +308,8 @@ async function createRoute() {
         document.querySelector('.btn-create-route').textContent = 'Create Route';
         return;
     }
+
+    if (!soId) { showToast('Assign a Supply Officer', 'warning'); isCreatingRoute = false; document.querySelector('.btn-create-route').disabled = false; document.querySelector('.btn-create-route').textContent = 'Create Route'; return; }
 
     const selGDs = availableGDs.filter(g => selectedGDs.has(g.group_delivery_number));
     const districts = [...new Set(selGDs.map(g => g.district))];

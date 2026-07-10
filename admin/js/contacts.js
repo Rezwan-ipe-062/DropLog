@@ -10,6 +10,7 @@ async function loadContacts() {
         const { data, error } = await sb
             .from('contacts')
             .select('*')
+            .eq('plant_name', getWarehouseName())
             .order('customer_name');
 
         const tbody = document.getElementById('contactsBody');
@@ -52,6 +53,7 @@ async function handleContactsUpload(event) {
         const wb = XLSX.read(data, { type: 'array' });
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
+        var whName = getWarehouseName();
         const contacts = rows.map(r => ({
             customer_id: String(r['BP ID'] || r['Customer ID'] || '').trim() || null,
             customer_name: r['Customer Name'] || r['Name'] || '',
@@ -61,7 +63,8 @@ async function handleContactsUpload(event) {
             email: (r['Email'] || '').trim() || null,
             district: (r['Region '] || r['Region'] || r['District'] || '').trim() || null,
             region: (r[' Zone Name'] || r['Zone'] || '').trim() || null,
-            unit_name: r['Unit Name'] || null
+            unit_name: r['Unit Name'] || null,
+            plant_name: whName
         })).filter(c => c.customer_name);
 
         if (contacts.length === 0) {
@@ -100,7 +103,8 @@ async function addContact() {
             customer_name: name,
             phone: phone || null,
             email: email || null,
-            district: district || null
+            district: district || null,
+            plant_name: getWarehouseName()
         });
 
         document.getElementById('addContactBpId').value = '';

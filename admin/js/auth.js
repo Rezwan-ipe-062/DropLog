@@ -29,6 +29,9 @@ async function handleAdminLogin() {
     if (!pin) { showToast('Enter password', 'warning'); return; }
     if (!sb) { showToast('Connecting...', 'warning'); return; }
 
+    var loginBtn = document.querySelector('.login-box button');
+    if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Signing in...'; }
+
     try {
         const hashedPin = await hashPin(pin);
 
@@ -42,6 +45,7 @@ async function handleAdminLogin() {
 
         if (error || !data) {
             showToast('Invalid credentials', 'error');
+            if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Sign In'; }
             return;
         }
 
@@ -62,6 +66,8 @@ async function handleAdminLogin() {
     } catch (e) {
         console.error('handleAdminLogin:', e);
         showToast(e.message || 'Something went wrong', 'error');
+        var loginBtn = document.querySelector('.login-box button');
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Sign In'; }
     }
 }
 

@@ -227,21 +227,22 @@ function showIssueAlert(issue) {
         escapeHtml(issue.details || '') + '<br>' +
         '<span class="issue-meta">Route: ' + escapeHtml(route.route_code || '?') + ' - ' + formatTime(issue.reported_at) + '</span>';
     popup.classList.add('visible');
+    popup._currentIssueId = issue.id;
 }
 
 async function dismissIssue() {
     try {
-        const { data: whRoutes } = await sb.from('routes').select('id').eq('plant_name', getWarehouseName());
-        const routeIds = (whRoutes || []).map(r => r.id);
-        if (routeIds.length === 0) return;
+        var popup = document.getElementById('issueAlertPopup');
+        var issueId = popup._currentIssueId;
+        if (!issueId) { popup.classList.remove('visible'); return; }
 
         await sb.from('issues').update({
             acknowledged: true,
             acknowledged_by: currentAdmin ? currentAdmin.id : null,
             acknowledged_at: new Date().toISOString()
-        }).in('route_id', routeIds).eq('acknowledged', false);
+        }).eq('id', issueId);
 
-        document.getElementById('issueAlertPopup').classList.remove('visible');
+        popup.classList.remove('visible');
         loadDashboard();
     } catch (e) {
         console.error('dismissIssue:', e);
@@ -268,6 +269,12 @@ function stopDashboardPolling() {
 async function deleteRoute(routeId) {
     if (!confirm('Delete this route? This cannot be undone.')) return;
     try {
+        var gdNums = null;
+        var { data: routeMeta } = await sb.from('routes').select('group_delivery_numbers').eq('id', routeId).maybeSingle();
+        if (routeMeta && Array.isArray(routeMeta.group_delivery_numbers)) {
+            gdNums = routeMeta.group_delivery_numbers;
+        }
+
         const { data: stops } = await sb.from('route_stops').select('id').eq('route_id', routeId);
         if (stops && stops.length > 0) {
             const stopIds = stops.map(s => s.id);
@@ -277,12 +284,10 @@ async function deleteRoute(routeId) {
         await sb.from('delivery_events').delete().eq('route_id', routeId);
         await sb.from('issues').delete().eq('route_id', routeId);
         await sb.from('notifications').delete().eq('route_id', routeId);
-
-        const { data: routeData } = await sb.from('routes').select('group_delivery_numbers').eq('id', routeId).single();
         await sb.from('routes').delete().eq('id', routeId);
 
-        if (routeData && routeData.group_delivery_numbers) {
-            for (const gdNum of routeData.group_delivery_numbers) {
+        if (gdNums) {
+            for (const gdNum of gdNums) {
                 await sb.from('available_gds').update({ status: 'available' }).eq('group_delivery_number', gdNum);
             }
         }
@@ -323,6 +328,7 @@ async function viewRouteDetail(routeId) {
     if (route.status === 'completed') {
         html += '<button class="btn-download-report" onclick="event.stopPropagation(); generateRouteReport(\'' + route.id + '\')">Download Route Report</button>';
     }
+    html += '<button class="btn-download-report" onclick="event.stopPropagation(); exportDeliveries(\'' + route.id + '\')">Export to Excel</button>';
     html += '</div>';
 
     html += '<div class="rd-info-grid">';
@@ -456,6 +462,7 @@ function destroyRouteDetailMap() {
 }
 
 function closeRouteDetail() {
+    destroyRouteDetailMap();
     var overlay = document.getElementById('routeDetailOverlay');
     if (overlay) overlay.remove();
 }
