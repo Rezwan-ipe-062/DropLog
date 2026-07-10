@@ -367,6 +367,20 @@ svg { flex-shrink: 0; }
 .empty-state p { font-size: 0.88rem; }
 
 /* ============================================================
+   SUPPORT
+   ============================================================ */
+.support-list { display: grid; gap: 12px; padding: 4px 0; }
+.support-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg); padding: 16px;
+    border-radius: var(--radius); border: 1px solid var(--gray-200);
+    box-shadow: var(--shadow);
+}
+.support-card svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--syn-blue); }
+.support-info strong { display: block; font-size: 0.88rem; margin-bottom: 2px; }
+.support-info span { font-size: 0.82rem; color: var(--muted); }
+
+/* ============================================================
    MAP
    ============================================================ */
 .map-wrap {
@@ -530,6 +544,7 @@ svg { flex-shrink: 0; }
 [data-theme="dark"] .nav-center { background: var(--syn-green); }
 [data-theme="dark"] .toast { background: #3d4250; color: #e8eaed; }
 [data-theme="dark"] .map-wrap { border-color: #2a2d35; }
+[data-theme="dark"] .support-card { background: #1a1d23; border-color: #2a2d35; }
 [data-theme="dark"] .badge { background: #3d4250; color: #c8ccd4; }
 [data-theme="dark"] .snap-card-track { background: #2a2d35; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #3d4250; }

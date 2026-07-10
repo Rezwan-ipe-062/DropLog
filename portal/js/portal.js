@@ -159,7 +159,12 @@ function navigate(section) {
     var el = document.querySelector('.nav-item[data-section="' + section + '"]');
     if (el) el.classList.add('active');
     if (section === 'support') {
-        showToast('Support contact info coming soon', 'info');
+        var supportEl = document.getElementById('support');
+        if (supportEl) {
+            document.querySelectorAll('.section').forEach(function(s) { s.style.display = 'none'; });
+            supportEl.style.display = 'block';
+            supportEl.scrollIntoView({ behavior:'smooth', block:'start' });
+        }
         return;
     }
     var target = document.getElementById(section);
@@ -174,7 +179,12 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('.nav-item').forEach(function(l) { l.classList.remove('active'); });
     link.classList.add('active');
     if (section === 'support') {
-        showToast('Support contact info coming soon', 'info');
+        var supportEl = document.getElementById('support');
+        if (supportEl) {
+            document.querySelectorAll('.section').forEach(function(s) { s.style.display = 'none'; });
+            supportEl.style.display = 'block';
+            supportEl.scrollIntoView({ behavior:'smooth', block:'start' });
+        }
         return;
     }
     var target = document.getElementById(section);
@@ -300,6 +310,13 @@ async function handleSearch() {
         $('snapshotTotal').textContent = stops.length + ' deliveries';
         $('dispatchCount').textContent = routeIds.length + ' routes';
         $('exceptionCount').textContent = openIssues.length;
+        var whName = (latest && latest.routes && latest.routes.plant_name) || '';
+        if (whName) {
+            $('supportWarehouseName').textContent = whName;
+            $('supportWarehouse').style.display = 'flex';
+        } else {
+            $('supportWarehouse').style.display = 'none';
+        }
         startAutoRefresh(bpId);
         _lastStops = stops;
         window.scrollTo(0, 0);
