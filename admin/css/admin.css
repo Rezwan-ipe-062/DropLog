@@ -647,7 +647,7 @@ tbody tr:last-child td { border-bottom: none; }
 .link-clear:hover { text-decoration: underline; }
 .btn-danger { padding: 8px 16px; background: white; color: var(--red); border: 1.5px solid var(--red); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
 .btn-danger:hover { background: var(--red-light); }
-.btn-small { padding: 6px 14px; background: var(--syn-green); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.3px; text-transform: uppercase; transition: background 0.15s, transform 0.1s; }
+.btn-small { padding: 8px 14px; background: var(--syn-green); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s; }
 .btn-small:hover { background: var(--syn-green-dark); }
 .btn-small:active { transform: scale(0.96); }
 
