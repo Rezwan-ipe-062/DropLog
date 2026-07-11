@@ -194,7 +194,16 @@ function dateClearAll() {
 
 function setSearchQuery(val) {
     searchQuery = val;
+    const input = document.querySelector('.rb-search-input');
+    const selStart = input ? input.selectionStart : 0;
     renderRouteBuilder();
+    requestAnimationFrame(function() {
+        const newInput = document.querySelector('.rb-search-input');
+        if (newInput) {
+            newInput.focus();
+            newInput.setSelectionRange(selStart, selStart);
+        }
+    });
 }
 
 function toggleStop(gdNum, stopId) {
