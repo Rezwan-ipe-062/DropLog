@@ -5,6 +5,8 @@
 let availableGDs = [];
 let isCreatingRoute = false;
 let selectedGDs = new Set();
+let selectedStops = new Set();
+let filterDate = null;
 let soList = [];
 let vehicleList = [];
 let vendorList = [];
@@ -50,6 +52,8 @@ async function loadAvailableGDs() {
         }
 
         selectedGDs.clear();
+        selectedStops.clear();
+        filterDate = null;
         renderRouteBuilder();
 
         // Load SO list (scoped to active warehouse — matches both short code and full name)
@@ -87,6 +91,66 @@ function getStopsForGD(gd) {
     return stopsCache[gd.id] || [];
 }
 
+function isGDAllSelected(gd) {
+    const stops = getStopsForGD(gd);
+    if (stops.length === 0) return false;
+    return stops.every(s => selectedStops.has(s.id));
+}
+
+function isGDPartial(gd) {
+    const stops = getStopsForGD(gd);
+    if (stops.length === 0) return false;
+    const count = stops.filter(s => selectedStops.has(s.id)).length;
+    return count > 0 && count < stops.length;
+}
+
+function hasSelectedStops() {
+    return selectedStops.size > 0;
+}
+
+function renderDateChips() {
+    const dates = [...new Set(availableGDs.map(g => g.posting_date).filter(Boolean))].sort().reverse();
+    if (dates.length <= 1) return '';
+    let html = '<div class="date-filter-bar">';
+    html += '<span class="date-filter-label">Posting Date:</span>';
+    html += '<button class="date-chip ' + (!filterDate ? 'active' : '') + '" onclick="clearDateFilter()">All</button>';
+    dates.forEach(d => {
+        html += '<button class="date-chip ' + (filterDate === d ? 'active' : '') + '" onclick="filterByDate(\'' + d + '\')">' + formatDate(d) + '</button>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function filterByDate(date) {
+    filterDate = date;
+    renderRouteBuilder();
+}
+
+function clearDateFilter() {
+    filterDate = null;
+    renderRouteBuilder();
+}
+
+function toggleStop(gdNum, stopId) {
+    if (selectedStops.has(stopId)) selectedStops.delete(stopId);
+    else selectedStops.add(stopId);
+    renderRouteBuilder();
+    updateRouteForm();
+}
+
+function toggleAllStopsForGD(gdNum) {
+    const gd = availableGDs.find(g => g.group_delivery_number === gdNum);
+    if (!gd) return;
+    const stops = getStopsForGD(gd);
+    const allSelected = stops.length > 0 && stops.every(s => selectedStops.has(s.id));
+    stops.forEach(s => {
+        if (allSelected) selectedStops.delete(s.id);
+        else selectedStops.add(s.id);
+    });
+    renderRouteBuilder();
+    updateRouteForm();
+}
+
 function renderRouteBuilder() {
     const container = document.getElementById('routeBuilderContent');
     if (!container) return;
@@ -99,13 +163,19 @@ function renderRouteBuilder() {
     }
 
     try {
-        const multiStop = availableGDs.filter(g => g.is_multi_stop);
-        const singleStop = availableGDs.filter(g => !g.is_multi_stop);
+        let filteredGDs = availableGDs;
+        if (filterDate) {
+            filteredGDs = availableGDs.filter(gd => gd.posting_date === filterDate);
+        }
+
+        const multiStop = filteredGDs.filter(g => g.is_multi_stop);
+        const singleStop = filteredGDs.filter(g => !g.is_multi_stop);
         const bundles = groupSinglesIntoBundles(singleStop);
 
         // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
-        let leftHtml = '<div class="rb-count-summary">' + availableGDs.length + ' Group Deliveries available for ' + escapeHtml(getWarehouseName()) + '</div>';
+        let leftHtml = '<div class="rb-count-summary">' + filteredGDs.length + (filterDate ? ' GDs on ' + formatDate(filterDate) : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
+        leftHtml += renderDateChips();
 
         if (multiStop.length > 0) {
             leftHtml += '<div class="rb-section">';
@@ -150,23 +220,24 @@ function renderRouteBuilder() {
 
 function renderGDCard(gd) {
     if (!gd || !gd.group_delivery_number) {
-        // console.warn('[DEBUG] renderGDCard: invalid gd', gd);
         return '';
     }
 
     const stops = getStopsForGD(gd) || [];
-    const isSelected = selectedGDs.has(gd.group_delivery_number);
+    const allSelected = isGDAllSelected(gd);
+    const partial = isGDPartial(gd);
     const isMulti = gd.is_multi_stop;
     const numCust = gd.num_unique_customers || 0;
     const totalQty = gd.total_quantity || 0;
 
     const gdNum = escapeHtml(String(gd.group_delivery_number));
+    const selectionClass = allSelected ? 'selected' : (partial ? 'partial' : '');
 
-    let html = '<div class="gd-card ' + (isSelected ? 'selected' : '') + (isMulti ? ' multi' : '') + '" ';
-    html += 'onclick="toggleGDSelection(\'' + gdNum.replace(/'/g, '\\\'') + '\')">';
+    let html = '<div class="gd-card ' + selectionClass + (isMulti ? ' multi' : '') + '" ';
+    html += 'onclick="toggleAllStopsForGD(\'' + gdNum.replace(/'/g, '\\\'') + '\')">';
 
     html += '<div class="gd-card-header">';
-    html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' class="gd-checkbox">';
+    html += '<input type="checkbox" ' + (allSelected ? 'checked' : '') + ' class="gd-checkbox" onclick="event.stopPropagation(); toggleAllStopsForGD(\'' + gdNum.replace(/'/g, '\\\'') + '\')">';
     html += '<div class="gd-card-title">';
     html += '<strong>GD ' + gdNum + '</strong>';
     html += '<span class="gd-meta">' + escapeHtml(String(gd.district || '')) + ' - ' + formatDate(gd.posting_date) + '</span>';
@@ -181,7 +252,13 @@ function renderGDCard(gd) {
         html += '<div class="gd-stops-list">';
         stops.forEach(s => {
             if (!s) return;
-            html += '<div class="gd-stop-item">> ' + escapeHtml(String(s.customer_name || '?')) + ' <span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span></div>';
+            const docLabel = (s.delivery_documents && s.delivery_documents.length > 0) ? ' <span class="stop-docs">' + escapeHtml(s.delivery_documents.join(', ')) + '</span>' : '';
+            html += '<div class="gd-stop-item">';
+            html += '<input type="checkbox" class="stop-checkbox" ' + (selectedStops.has(s.id) ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleStop(\'' + gdNum.replace(/'/g, '\\\'') + '\', \'' + s.id + '\')">';
+            html += '<span class="stop-label">' + escapeHtml(String(s.customer_name || '?')) + '</span>';
+            html += docLabel;
+            html += '<span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span>';
+            html += '</div>';
         });
         html += '</div>';
     }
@@ -192,16 +269,15 @@ function renderGDCard(gd) {
 
 function renderBundleCard(bundle, idx) {
     if (!bundle || !bundle.gds) {
-        // console.warn('[DEBUG] renderBundleCard: invalid bundle', bundle);
         return '';
     }
 
-    const isAllSelected = bundle.gds.every(g => g && selectedGDs.has(g.group_delivery_number));
+    const allSelected = bundle.gds.every(g => g && isGDAllSelected(g));
     const totalGds = bundle.gds.length || 0;
 
-    let html = '<div class="bundle-card ' + (isAllSelected ? 'selected' : '') + '">';
+    let html = '<div class="bundle-card ' + (allSelected ? 'selected' : '') + '">';
     html += '<div class="bundle-header" onclick="toggleBundleSelection(' + idx + ')">';
-    html += '<input type="checkbox" ' + (isAllSelected ? 'checked' : '') + ' class="gd-checkbox">';
+    html += '<input type="checkbox" ' + (allSelected ? 'checked' : '') + ' class="gd-checkbox" onclick="event.stopPropagation(); toggleBundleSelection(' + idx + ')">';
     html += '<div class="bundle-header-info">';
     html += '<strong>' + escapeHtml(bundle.district || '?') + '</strong>';
     html += '<span class="gd-meta">' + formatDate(bundle.date) + ' — ' + totalGds + ' GDs, ' + (bundle.totalCustomers || 0) + ' stops, ' + Math.round(bundle.totalQty || 0) + ' units</span>';
@@ -213,16 +289,32 @@ function renderBundleCard(bundle, idx) {
     bundle.gds.forEach(gd => {
         if (!gd || !gd.group_delivery_number) return;
         const stops = getStopsForGD(gd);
-        const custName = stops.length > 0 ? (stops[0].customer_name || '?') : (gd.district || 'Customer');
-        const isSelected = selectedGDs.has(gd.group_delivery_number);
+        const isSelected = isGDAllSelected(gd);
+        const partial = isGDPartial(gd);
         const gdNumEsc = escapeHtml(String(gd.group_delivery_number));
         const totalQty = Math.round(gd.total_quantity || 0);
 
-        html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : '') + '" onclick="event.stopPropagation(); toggleGDSelection(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\')">';
-        html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + '>';
+        html += '<div class="bundle-gd-item ' + (isSelected ? 'selected' : (partial ? 'partial' : '')) + '" onclick="event.stopPropagation(); toggleAllStopsForGD(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\')">';
+        html += '<input type="checkbox" ' + (isSelected ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleAllStopsForGD(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\')">';
         html += '<div class="bundle-gd-info">';
         html += '<strong>GD ' + gdNumEsc + '</strong>';
-        html += '<span>' + escapeHtml(custName) + '</span>';
+        if (stops.length > 0) {
+            const custNames = stops.map(s => escapeHtml(String(s.customer_name || '?'))).join(', ');
+            const docNums = stops.filter(s => s.delivery_documents && s.delivery_documents.length > 0).map(s => escapeHtml(s.delivery_documents.join(', '))).join('; ');
+            html += '<span>' + custNames + '</span>';
+            if (docNums) html += '<span class="stop-docs">' + docNums + '</span>';
+            html += '<div class="bundle-stop-checks">';
+            stops.forEach(s => {
+                if (!s) return;
+                html += '<label class="bundle-stop-check" onclick="event.stopPropagation();">';
+                html += '<input type="checkbox" ' + (selectedStops.has(s.id) ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleStop(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\', \'' + s.id + '\')">';
+                html += '<span>' + escapeHtml(String(s.customer_name || '?')) + ' <span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span></span>';
+                html += '</label>';
+            });
+            html += '</div>';
+        } else {
+            html += '<span>No stops loaded</span>';
+        }
         html += '</div>';
         html += '<span class="qty-badge">' + totalQty + ' units</span>';
         html += '</div>';
@@ -255,11 +347,7 @@ function renderRouteForm() {
 // ---- Selection ----
 
 function toggleGDSelection(gdNum) {
-    // console.log('[DEBUG] toggleGDSelection: gdNum=' + gdNum + ' wasSelected=' + selectedGDs.has(gdNum));
-    if (selectedGDs.has(gdNum)) selectedGDs.delete(gdNum);
-    else selectedGDs.add(gdNum);
-    renderRouteBuilder();
-    updateRouteForm();
+    toggleAllStopsForGD(gdNum);
 }
 
 function toggleBundleSelection(bundleIdx) {
@@ -268,10 +356,13 @@ function toggleBundleSelection(bundleIdx) {
     const bundle = bundles[bundleIdx];
     if (!bundle) return;
 
-    const allSelected = bundle.gds.every(g => selectedGDs.has(g.group_delivery_number));
+    const allSelected = bundle.gds.every(g => isGDAllSelected(g));
     bundle.gds.forEach(gd => {
-        if (allSelected) selectedGDs.delete(gd.group_delivery_number);
-        else selectedGDs.add(gd.group_delivery_number);
+        const stops = getStopsForGD(gd);
+        stops.forEach(s => {
+            if (allSelected) selectedStops.delete(s.id);
+            else selectedStops.add(s.id);
+        });
     });
 
     renderRouteBuilder();
@@ -280,7 +371,7 @@ function toggleBundleSelection(bundleIdx) {
 
 function updateRouteForm() {
     const form = document.getElementById('routeCreateForm');
-    if (selectedGDs.size === 0) { form.style.display = 'none'; return; }
+    if (selectedStops.size === 0) { form.style.display = 'none'; return; }
     form.style.display = 'block';
 
     const soSelect = document.getElementById('rfSO');
@@ -313,18 +404,27 @@ function updateRouteForm() {
         });
     }
 
-    const selGDs = availableGDs.filter(g => selectedGDs.has(g.group_delivery_number));
-    const totalStops = selGDs.reduce((s, g) => s + g.num_unique_customers, 0);
-    const totalQty = selGDs.reduce((s, g) => s + g.total_quantity, 0);
-    const districts = [...new Set(selGDs.map(g => g.district))];
+    let totalQty = 0;
+    let gdSet = new Set();
+    let districtSet = new Set();
+    availableGDs.forEach(gd => {
+        const stops = getStopsForGD(gd);
+        stops.forEach(s => {
+            if (selectedStops.has(s.id)) {
+                totalQty += (s.total_quantity || 0);
+                gdSet.add(gd.group_delivery_number);
+                if (gd.district) districtSet.add(gd.district);
+            }
+        });
+    });
 
     document.getElementById('rfSummary').innerHTML = 
-        '<strong>Selected:</strong> ' + selectedGDs.size + ' GDs > ' + totalStops + ' stops > ' + Math.round(totalQty) + ' units<br>' +
-        '<strong>Districts:</strong> ' + districts.map(d => escapeHtml(d)).join(', ');
+        '<strong>Selected:</strong> ' + gdSet.size + ' GDs &gt; ' + selectedStops.size + ' stops &gt; ' + Math.round(totalQty) + ' units<br>' +
+        '<strong>Districts:</strong> ' + [...districtSet].map(d => escapeHtml(d)).join(', ');
 }
 
 function closeRouteForm() {
-    selectedGDs.clear();
+    selectedStops.clear();
     renderRouteBuilder();
 }
 
@@ -348,7 +448,7 @@ function onRouteVehicleChange() {
 // ---- Create Route ----
 
 async function createRoute() {
-    if (selectedGDs.size === 0) { showToast('Select at least one GD', 'warning'); return; }
+    if (selectedStops.size === 0) { showToast('Select at least one stop', 'warning'); return; }
     if (isCreatingRoute) return;
     isCreatingRoute = true;
     document.querySelector('.btn-create-route').disabled = true;
@@ -360,7 +460,6 @@ async function createRoute() {
     const soId = document.getElementById('rfSO').value;
     const routeName = document.getElementById('rfName').value.trim();
 
-    // Look up vehicle capacity from fleet registry
     const selectedVehicle = vehicleList.find(function(v) { return v.vehicle_number === vehicle; });
     const vehicleCapacityMt = selectedVehicle && selectedVehicle.capacity_mt ? selectedVehicle.capacity_mt : null;
 
@@ -374,17 +473,28 @@ async function createRoute() {
 
     if (!soId) { showToast('Assign a Supply Officer', 'warning'); isCreatingRoute = false; document.querySelector('.btn-create-route').disabled = false; document.querySelector('.btn-create-route').textContent = 'Create Route'; return; }
 
-    const selGDs = availableGDs.filter(g => selectedGDs.has(g.group_delivery_number));
-    const districts = [...new Set(selGDs.map(g => g.district))];
-    const dispatchDate = selGDs[0].posting_date || new Date().toISOString().slice(0, 10);
-    const routeCode = generateRouteCode(districts[0], dispatchDate);
-
-    // Collect stops
     const allStops = [];
-    selGDs.forEach(gd => {
+    const gdSet = new Set();
+    const districtSet = new Set();
+    let dispatchDate = null;
+
+    availableGDs.forEach(gd => {
         const stops = getStopsForGD(gd);
-        stops.forEach(s => allStops.push(s));
+        stops.forEach(s => {
+            if (selectedStops.has(s.id)) {
+                allStops.push(s);
+                gdSet.add(gd.group_delivery_number);
+                if (gd.district) districtSet.add(gd.district);
+                if (!dispatchDate && gd.posting_date) dispatchDate = gd.posting_date;
+            }
+        });
     });
+
+    if (allStops.length === 0) { showToast('No stops selected', 'warning'); isCreatingRoute = false; document.querySelector('.btn-create-route').disabled = false; document.querySelector('.btn-create-route').textContent = 'Create Route'; return; }
+
+    const districts = [...districtSet];
+    if (!dispatchDate) dispatchDate = new Date().toISOString().slice(0, 10);
+    const routeCode = generateRouteCode(districts[0], dispatchDate);
 
     try {
         const { data: routeData, error: routeErr } = await sb
@@ -401,7 +511,7 @@ async function createRoute() {
                 dispatch_date: dispatchDate,
                 plant_name: getWarehouseName(),
                 district: districts.join(', '),
-                group_delivery_numbers: Array.from(selectedGDs),
+                group_delivery_numbers: [...gdSet],
                 total_stops: allStops.length,
                 created_by: currentAdmin ? currentAdmin.id : null
             })
@@ -412,7 +522,6 @@ async function createRoute() {
 
         const routeId = routeData.id;
 
-        // Create route_stops
         for (let i = 0; i < allStops.length; i++) {
             const stop = allStops[i];
             const { data: rsData } = await sb.from('route_stops').insert({
@@ -428,7 +537,6 @@ async function createRoute() {
 
             if (!rsData) continue;
 
-            // Copy products
             const { data: prods } = await sb.from('parsed_products').select('*').eq('stop_id', stop.id);
             if (prods && prods.length > 0) {
                 await sb.from('stop_products').insert(prods.map(p => ({
@@ -443,13 +551,12 @@ async function createRoute() {
             }
         }
 
-        // Mark GDs as assigned
-        for (const gdNum of selectedGDs) {
+        for (const gdNum of gdSet) {
             await sb.from('available_gds').update({ status: 'assigned' }).eq('group_delivery_number', gdNum);
         }
 
         showToast('Route ' + routeCode + ' created!', 'success');
-        selectedGDs.clear();
+        selectedStops.clear();
         isCreatingRoute = false;
         switchTab('dashboard');
 

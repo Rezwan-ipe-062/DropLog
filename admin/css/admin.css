@@ -257,6 +257,34 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .bundle-gd-info strong { font-size: 12px; color: var(--gray-700); }
 .bundle-gd-info span { color: var(--gray-500); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+.date-filter-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 12px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-200); }
+.date-filter-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-right: 4px; }
+.date-chip { padding: 4px 10px; border-radius: 12px; border: 1.5px solid var(--gray-300); background: var(--white); font-size: 12px; cursor: pointer; transition: all 0.15s; color: var(--gray-600); }
+.date-chip:hover { border-color: var(--syn-blue); color: var(--syn-blue); }
+.date-chip.active { background: var(--syn-blue); color: var(--white); border-color: var(--syn-blue); }
+
+.gd-card.partial { border-color: var(--syn-yellow, #f59e0b); background: rgba(245,158,11,0.04); }
+.gd-card.partial .gd-card-header { border-bottom-color: rgba(245,158,11,0.2); }
+
+.gd-stop-item { display: flex; align-items: center; gap: 6px; padding: 4px 0 4px 8px; font-size: 13px; color: var(--gray-700); }
+.gd-stop-item .stop-checkbox { width: 14px; height: 14px; accent-color: var(--syn-green); flex-shrink: 0; cursor: pointer; }
+.gd-stop-item .stop-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gd-stop-item .stop-docs { font-size: 11px; color: var(--syn-blue); background: var(--syn-blue-light); padding: 1px 6px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
+.gd-stop-item .qty-badge { font-size: 11px; font-weight: 600; color: var(--syn-green); flex-shrink: 0; }
+
+.bundle-stop-checks { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--gray-100); }
+.bundle-stop-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gray-600); cursor: pointer; padding: 2px 0; }
+.bundle-stop-check input { width: 14px; height: 14px; accent-color: var(--syn-green); flex-shrink: 0; }
+.bundle-stop-check span { flex: 1; display: flex; align-items: center; gap: 6px; }
+.bundle-gd-item.partial { border-color: var(--syn-yellow, #f59e0b); background: rgba(245,158,11,0.04); }
+
+[data-theme="dark"] .date-filter-bar { background: #14161c; border-color: #2a2d35; }
+[data-theme="dark"] .date-chip { background: #1a1d23; border-color: #3d4250; color: #9ca3af; }
+[data-theme="dark"] .date-chip.active { background: var(--syn-blue); color: #fff; }
+[data-theme="dark"] .gd-card.partial { background: rgba(245,158,11,0.06); }
+[data-theme="dark"] .bundle-gd-item.partial { background: rgba(245,158,11,0.06); }
+[data-theme="dark"] .bundle-stop-checks { border-top-color: #2a2d35; }
+
 /* Route builder split layout */
 .rb-split { display: flex; gap: 20px; align-items: flex-start; }
 .rb-left { flex: 1; min-width: 0; }
