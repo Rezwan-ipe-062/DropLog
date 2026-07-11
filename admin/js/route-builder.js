@@ -234,8 +234,10 @@ function renderRouteBuilder() {
 
         // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
-        let leftHtml = '<div class="rb-count-summary">' + filteredGDs.length + (filterDates.size > 0 ? ' filtered GDs' : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
+        let leftHtml = '<div class="rb-count-row">';
+        leftHtml += '<div class="rb-count-summary">' + filteredGDs.length + (filterDates.size > 0 ? ' filtered GDs' : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
         leftHtml += renderDateFilter();
+        leftHtml += '</div>';
 
         if (multiStop.length > 0) {
             leftHtml += '<div class="rb-section">';
