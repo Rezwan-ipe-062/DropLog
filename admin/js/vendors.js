@@ -20,11 +20,11 @@ async function loadVendors() {
 
         if (!data || data.length === 0) {
             tbody.innerHTML = '';
-            empty.style.display = 'block';
+            empty.classList.remove('hidden');
             return;
         }
 
-        empty.style.display = 'none';
+        empty.classList.add('hidden');
         tbody.innerHTML = data.map(v =>
             '<tr>' +
             '<td><strong>' + escapeHtml(v.vendor_name) + '</strong></td>' +

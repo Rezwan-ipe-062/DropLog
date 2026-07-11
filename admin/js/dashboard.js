@@ -60,7 +60,7 @@ async function loadActiveRoutes() {
             const total = stops.length;
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-            let html = '<div class="active-route-card" onclick="viewRouteDetail(\'' + route.id + '\')" style="cursor:pointer;">';
+            let html = '<div class="active-route-card cursor-pointer" onclick="viewRouteDetail(\'' + route.id + '\')">';
             html += '<div class="arc-header">';
             html += '<div><strong>' + escapeHtml(route.route_name || route.route_code) + '</strong>';
             html += '<span class="arc-meta">' + escapeHtml(route.district) + ' - ' + escapeHtml(route.vehicle_number) + '</span></div>';
@@ -114,10 +114,15 @@ async function loadRecentRoutes(filterStatus) {
 
         if (!filterStatus) {
             if (filterLabel) filterLabel.textContent = '';
-            if (clearFilter) clearFilter.style.display = 'none';
+            if (clearFilter) clearFilter.classList.add('hidden');
         } else {
             if (filterLabel) filterLabel.textContent = 'Showing: ' + filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1);
-            if (clearFilter) clearFilter.style.display = 'inline';
+        if (clearFilter) clearFilter.classList.remove('hidden');
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No delivery exceptions.</td></tr>';
+            return;
+        }
         }
 
         if (!data || data.length === 0) {
@@ -130,7 +135,7 @@ async function loadRecentRoutes(filterStatus) {
         tbody.innerHTML = data.map(r => {
             const statusClass = r.status === 'completed' ? 'status-completed' : 
                                r.status === 'in_transit' ? 'status-transit' : 'status-pending';
-            return '<tr onclick="viewRouteDetail(\'' + r.id + '\')" style="cursor:pointer;">' +
+            return '<tr class="cursor-pointer" onclick="viewRouteDetail(\'' + r.id + '\")">' +
                 '<td><strong>' + escapeHtml(r.route_code) + '</strong></td>' +
                 '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
                 '<td>' + escapeHtml(r.district || '-') + '</td>' +
@@ -180,7 +185,7 @@ async function loadIssueRoutes() {
         const clearFilter = document.getElementById('clearFilter');
         const openCount = (data || []).filter(i => !i.acknowledged).length;
         if (filterLabel) filterLabel.textContent = 'Issues (' + openCount + ' open / ' + (data || []).length + ' total)';
-        if (clearFilter) clearFilter.style.display = 'inline';
+        if (clearFilter) clearFilter.classList.remove('hidden');
 
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No issues reported.</td></tr>';
@@ -190,7 +195,7 @@ async function loadIssueRoutes() {
         tbody.innerHTML = data.map(issue => {
             const r = issue.routes || {};
             const ackLabel = issue.acknowledged ? '<span class="status-badge status-completed">Dismissed</span>' : '<span class="status-badge status-pending">Open</span>';
-            return '<tr onclick="viewRouteDetail(\'' + issue.route_id + '\')" style="cursor:pointer;">' +
+            return '<tr class="cursor-pointer" onclick="viewRouteDetail(\'' + issue.route_id + '\')" >' +
                 '<td><strong>' + escapeHtml(r.route_code || '?') + '</strong></td>' +
                 '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
                 '<td>' + escapeHtml(r.district || '-') + '</td>' +
@@ -219,19 +224,14 @@ async function loadExceptionRoutes() {
         const filterLabel = document.getElementById('filterLabel');
         const clearFilter = document.getElementById('clearFilter');
         if (filterLabel) filterLabel.textContent = 'Delivery Exceptions (' + (data || []).length + ')';
-        if (clearFilter) clearFilter.style.display = 'inline';
-
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No delivery exceptions.</td></tr>';
-            return;
-        }
+        if (clearFilter) clearFilter.classList.remove('hidden');
 
         tbody.innerHTML = data.map(stop => {
             const r = stop.routes || {};
             const respLabel = stop.customer_response === 'not_received' ? '<span class="status-badge status-pending">Not Received</span>' :
                               stop.customer_response === 'confirmed_received' ? '<span class="status-badge status-completed">Confirmed</span>' :
                               '<span class="status-badge status-pending">No Response</span>';
-            return '<tr onclick="viewRouteDetail(\'' + stop.route_id + '\')" style="cursor:pointer;">' +
+            return '<tr class="cursor-pointer" onclick="viewRouteDetail(\'' + stop.route_id + '\')" >' +
                 '<td><strong>' + escapeHtml(r.route_code || '?') + '</strong></td>' +
                 '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
                 '<td>' + escapeHtml(stop.customer_name || '-') + '</td>' +
@@ -369,7 +369,7 @@ async function viewRouteDetail(routeId) {
     html += '</div>';
 
     var statusClass = route.status === 'completed' ? 'status-completed' : route.status === 'in_transit' ? 'status-transit' : 'status-pending';
-    html += '<div style="display:flex;align-items:center;gap:12px;margin:8px 0;">';
+    html += '<div class="flex-center-gap">';
     html += '<span class="status-badge ' + statusClass + '">' + route.status + '</span>';
     if (route.status === 'completed') {
         html += '<button class="btn-download-report" onclick="event.stopPropagation(); generateRouteReport(\'' + route.id + '\')">Download Route Report</button>';
@@ -430,11 +430,11 @@ async function viewRouteDetail(routeId) {
         });
     }
 
-    html += '<div class="rd-section-title" style="display:flex;align-items:center;justify-content:space-between;">';
+    html += '<div class="rd-section-title flex-between">';
     html += '<span>Delivery Map</span>';
     html += '<button class="btn-show-map" id="btnToggleMap" onclick="toggleRouteMap(\'' + routeId + '\')">Show Map</button>';
     html += '</div>';
-    html += '<div id="routeDetailMapWrap" class="rd-map-wrap" style="display:none;"><div id="routeDetailMap" class="rd-map"></div></div>';
+    html += '<div id="routeDetailMapWrap" class="rd-map-wrap display-none"><div id="routeDetailMap" class="rd-map"></div></div>';
 
     html += '</div></div>';
 
@@ -447,12 +447,12 @@ function toggleRouteMap(routeId) {
     var wrap = document.getElementById('routeDetailMapWrap');
     var btn = document.getElementById('btnToggleMap');
     if (!wrap) return;
-    if (wrap.style.display === 'none') {
-        wrap.style.display = 'block';
+    if (wrap.classList.contains('display-none')) {
+        wrap.classList.remove('display-none');
         btn.textContent = 'Hide Map';
         setTimeout(function() { renderRouteDetailMap(routeId); }, 100);
     } else {
-        wrap.style.display = 'none';
+        wrap.classList.add('display-none');
         btn.textContent = 'Show Map';
         destroyRouteDetailMap();
     }

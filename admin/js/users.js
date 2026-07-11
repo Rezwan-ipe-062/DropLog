@@ -19,18 +19,18 @@ async function loadUsers() {
 
         if (!data || data.length === 0) {
             tbody.innerHTML = '';
-            empty.style.display = 'block';
+            empty.classList.remove('hidden');
             return;
         }
 
-        empty.style.display = 'none';
+        empty.classList.add('hidden');
         tbody.innerHTML = data.map(u => 
             '<tr>' +
             '<td><strong>' + escapeHtml(u.name) + '</strong></td>' +
             '<td>' + escapeHtml(u.user_id) + '</td>' +
             '<td>' + escapeHtml(u.warehouse || '-') + '</td>' +
             '<td>' + escapeHtml(u.phone || '-') + '</td>' +
-            '<td style="font-family:monospace;font-weight:600;">' + escapeHtml(u.pin_plain || '--') + '</td>' +
+            '<td class="mono-text">' + escapeHtml(u.pin_plain || '--') + '</td>' +
             '<td><span class="link-delete" onclick="resetPin(\'' + u.id + '\', \'' + escapeHtml(u.name) + '\')">Reset</span></td>' +
             '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
             '</tr>'

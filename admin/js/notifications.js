@@ -19,11 +19,11 @@ async function loadNotifications() {
 
         if (!data || data.length === 0) {
             tbody.innerHTML = '';
-            empty.style.display = 'block';
+            empty.classList.remove('hidden');
             return;
         }
 
-        empty.style.display = 'none';
+        empty.classList.add('hidden');
         tbody.innerHTML = data.map(n => {
             const typeClass = n.message_type === 'route_started' ? 'type-start' : 
                              n.message_type === 'delivery_done' ? 'type-done' :

@@ -7,12 +7,12 @@ let currentAdmin = null;
 
 function showLoginScreen() {
     document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('mainApp').classList.add('hidden');
 }
 
 function showMainApp() {
     document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('mainApp').classList.remove('hidden');
 
     const nameEl = document.getElementById('adminName');
     if (nameEl) nameEl.textContent = currentAdmin.name || 'Admin';

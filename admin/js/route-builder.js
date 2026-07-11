@@ -266,14 +266,14 @@ function renderRouteBuilder() {
 
         container.innerHTML = '<div class="rb-split">' +
             '<div class="rb-left">' + leftHtml + '</div>' +
-            '<div class="rb-form-panel" id="routeCreateForm" style="display:none;">' +
+            '<div class="rb-form-panel display-none" id="routeCreateForm">' +
             formHtml +
             '<button class="rb-form-close" onclick="closeRouteForm()">X</button>' +
             '</div></div>';
         // console.log('[DEBUG] renderRouteBuilder: rendered OK');
     } catch (e) {
         console.error('renderRouteBuilder:', e);
-        container.innerHTML = '<div class="empty-state"><p style="color:var(--red)">Render error: ' + escapeHtml(e.message) + '</p></div>';
+        container.innerHTML = '<div class="empty-state"><p class="error-text">Render error: ' + escapeHtml(e.message) + '</p></div>';
         showToast('Render error — see console', 'error');
     }
 }
@@ -393,7 +393,7 @@ function renderRouteForm() {
     html += '<div class="form-group"><label>Vendor</label><select id="rfVendor"><option value="">- Select Vendor -</option></select></div>';
     html += '</div>';
     html += '<div class="form-row">';
-    html += '<div class="form-group" id="rfCapacityGroup" style="display:none;"><label>Vehicle Capacity</label><div id="rfCapacityDisplay" style="padding:9px 12px;background:var(--gray-100);border-radius:6px;font-size:14px;color:var(--gray-600);">—</div></div>';
+    html += '<div class="form-group display-none" id="rfCapacityGroup"><label>Vehicle Capacity</label><div id="rfCapacityDisplay" class="capacity-display">—</div></div>';
     html += '</div>';
     html += '<div class="form-row">';
     html += '<div class="form-group"><label>Assign SO</label><select id="rfSO"><option value="">- Select Supply Officer -</option></select></div>';
@@ -431,8 +431,8 @@ function toggleBundleSelection(bundleIdx) {
 
 function updateRouteForm() {
     const form = document.getElementById('routeCreateForm');
-    if (selectedStops.size === 0) { form.style.display = 'none'; return; }
-    form.style.display = 'block';
+    if (selectedStops.size === 0) { form.classList.add('display-none'); return; }
+    form.classList.remove('display-none');
 
     const soSelect = document.getElementById('rfSO');
     if (soSelect && soSelect.options.length <= 1) {
@@ -493,7 +493,7 @@ function onRouteVehicleChange() {
     var capGroup = document.getElementById('rfCapacityGroup');
     var capDisplay = document.getElementById('rfCapacityDisplay');
     if (!vehicleNum) {
-        capGroup.style.display = 'none';
+        capGroup.classList.add('display-none');
         return;
     }
     var vehicle = vehicleList.find(function(v) { return v.vehicle_number === vehicleNum; });
@@ -502,7 +502,7 @@ function onRouteVehicleChange() {
     } else {
         capDisplay.textContent = 'Not set';
     }
-    capGroup.style.display = 'block';
+    capGroup.classList.remove('display-none');
 }
 
 // ---- Create Route ----

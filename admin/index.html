@@ -27,20 +27,21 @@
 </div>
 
 <!-- ====== MAIN APP ====== -->
-<div id="mainApp" style="display:none;">
+<div id="mainApp" class="hidden">
 
     <!-- Header -->
     <div class="header">
         <div class="header-brand">
             <img src="data:image/png;base64,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" alt="Syngenta" style="height:24px;opacity:0.9;">
-            <span style="width:1px;height:18px;background:rgba(255,255,255,0.25);"></span>
+            <span class="header-divider"></span>
             <span>DropLog</span>
-            <span style="opacity:0.5;font-size:12px;">Admin</span>
+            <span class="header-subtitle">Admin</span>
         </div>
         <div class="header-right">
             <span class="admin-name" id="adminName"></span>
             <button class="btn-theme" onclick="toggleTheme()" title="Toggle dark mode" id="themeBtn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             </button>
             <button class="btn-logout" onclick="handleLogout()">Sign Out</button>
         </div>
@@ -92,12 +93,30 @@
         <!-- Dashboard Panel -->
         <div class="panel active" id="panel-dashboard">
             <div class="stats-row">
-                <div class="stat-card blue" onclick="filterByStatus(null)"><div class="stat-label">Total Routes</div><div class="stat-value" id="statTotal">0</div></div>
-                <div class="stat-card orange" onclick="filterByStatus('pending')"><div class="stat-label">Pending</div><div class="stat-value" id="statPending">0</div></div>
-                <div class="stat-card yellow" onclick="filterByStatus('active')"><div class="stat-label">In Transit</div><div class="stat-value" id="statTransit">0</div></div>
-                <div class="stat-card green" onclick="filterByStatus('completed')"><div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div></div>
-                <div class="stat-card red" onclick="filterByStatus('issues')"><div class="stat-label">Open Issues</div><div class="stat-value" id="statIssues">0</div></div>
-                <div class="stat-card red" onclick="filterByStatus('exceptions')"><div class="stat-label">Delivery Exceptions</div><div class="stat-value" id="statExceptions">0</div></div>
+                <div class="stat-card blue" onclick="filterByStatus(null)">
+                    <div class="stat-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+                    <div class="stat-label">Total Routes</div><div class="stat-value" id="statTotal">0</div>
+                </div>
+                <div class="stat-card orange" onclick="filterByStatus('pending')">
+                    <div class="stat-icon orange"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div class="stat-label">Pending</div><div class="stat-value" id="statPending">0</div>
+                </div>
+                <div class="stat-card yellow" onclick="filterByStatus('active')">
+                    <div class="stat-icon yellow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg></div>
+                    <div class="stat-label">In Transit</div><div class="stat-value" id="statTransit">0</div>
+                </div>
+                <div class="stat-card green" onclick="filterByStatus('completed')">
+                    <div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                    <div class="stat-label">Completed</div><div class="stat-value" id="statCompleted">0</div>
+                </div>
+                <div class="stat-card red" onclick="filterByStatus('issues')">
+                    <div class="stat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                    <div class="stat-label">Open Issues</div><div class="stat-value" id="statIssues">0</div>
+                </div>
+                <div class="stat-card red" onclick="filterByStatus('exceptions')">
+                    <div class="stat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                    <div class="stat-label">Delivery Exceptions</div><div class="stat-value" id="statExceptions">0</div>
+                </div>
             </div>
 
             <div class="card">
@@ -106,7 +125,7 @@
             </div>
 
             <div class="card">
-                <h3>Recent Routes <span id="filterLabel" class="filter-label"></span><span id="clearFilter" class="link-clear" style="display:none;" onclick="filterByStatus(null)">Clear filter</span> <button class="btn-export" onclick="exportRoutes()" style="float:right;">Export Routes</button></h3>
+                <h3>Recent Routes <span id="filterLabel" class="filter-label"></span><span id="clearFilter" class="link-clear hidden" onclick="filterByStatus(null)">Clear filter</span> <button class="btn-export float-right" onclick="exportRoutes()">Export Routes</button></h3>
                 <table>
                     <thead><tr><th>Code</th><th>Name</th><th>District</th><th>Date</th><th>Progress</th><th>Status</th><th></th></tr></thead>
                     <tbody id="recentRoutesBody"></tbody>
@@ -125,16 +144,16 @@
         <div class="panel" id="panel-upload">
             <div class="card">
                 <h3>Upload SAP Export</h3>
-                <p style="margin-bottom:14px;">Upload the daily SAP Group Delivery export (.xls or .xlsx). The parser reads the "Data" sheet automatically.</p>
+                <p class="mb-3">Upload the daily SAP Group Delivery export (.xls or .xlsx). The parser reads the "Data" sheet automatically.</p>
                 <div class="upload-area">
                     <input type="file" accept=".xlsx,.xls,.csv" onchange="handleSAPUpload(event)">
                     <p> Click or drag file here</p>
                 </div>
                 <div id="uploadStatus" class="upload-status"></div>
             </div>
-            <div class="card" style="margin-top:16px;">
+            <div class="card mt-4">
                 <h3>Clear Data</h3>
-                <p style="margin-bottom:12px;">Remove all parsed data (GDs, stops, products). Routes already created are NOT affected.</p>
+                <p class="mb-3">Remove all parsed data (GDs, stops, products). Routes already created are NOT affected.</p>
                 <button class="btn-danger" onclick="clearAllData()">Clear All Parsed Data</button>
             </div>
         </div>
@@ -142,21 +161,21 @@
         <!-- Contacts Panel -->
         <div class="panel" id="panel-contacts">
             <div class="card">
-                <h3>Customer Contacts <span id="contactCount" style="font-size:12px;color:var(--gray-500);font-weight:400;"></span> <button class="btn-export" onclick="exportContacts()" style="float:right;">Export Contacts</button></h3>
-                <p style="margin-bottom:14px;">Upload customer list with phone/email for delivery notifications.</p>
-                <div class="upload-area" style="margin-bottom:16px;">
+                <h3>Customer Contacts <span id="contactCount" class="count-badge"></span> <button class="btn-export float-right" onclick="exportContacts()">Export Contacts</button></h3>
+                <p class="mb-3">Upload customer list with phone/email for delivery notifications.</p>
+                <div class="upload-area mb-4">
                     <input type="file" accept=".xlsx,.xls,.csv" onchange="handleContactsUpload(event)">
                     <p>Upload contacts file (BP ID, Name, Phone, Email)</p>
                 </div>
                 <div id="contactUploadStatus" class="upload-status"></div>
 
                 <!-- Manual add -->
-                <div style="display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;">
-                    <input type="text" id="addContactBpId" placeholder="BP ID" style="width:100px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="text" id="addContactName" placeholder="Customer Name" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="tel" id="addContactPhone" placeholder="Phone" style="width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="email" id="addContactEmail" placeholder="Email" style="flex:1;min-width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="text" id="addContactDistrict" placeholder="District" style="width:110px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                <div class="form-inline">
+                    <input type="text" id="addContactBpId" placeholder="BP ID" class="input input-sm">
+                    <input type="text" id="addContactName" placeholder="Customer Name" class="input input-flex">
+                    <input type="tel" id="addContactPhone" placeholder="Phone" class="input input-md">
+                    <input type="email" id="addContactEmail" placeholder="Email" class="input input-flex">
+                    <input type="text" id="addContactDistrict" placeholder="District" class="input input-lg">
                     <button class="btn-small" onclick="addContact()">+ Add</button>
                 </div>
 
@@ -172,11 +191,11 @@
         <div class="panel" id="panel-users">
             <div class="card">
                 <h3>Supply Officers</h3>
-                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <input type="text" id="newSOName" placeholder="Full Name" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="text" id="newSOId" placeholder="Employee ID" style="width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="text" id="newSOPin" placeholder="PIN (4)" maxlength="4" style="width:80px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="tel" id="newSOPhone" placeholder="Phone" style="width:130px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                <div class="form-inline">
+                    <input type="text" id="newSOName" placeholder="Full Name" class="input input-flex">
+                    <input type="text" id="newSOId" placeholder="Employee ID" class="input input-md">
+                    <input type="text" id="newSOPin" placeholder="PIN (4)" maxlength="4" class="input input-sm">
+                    <input type="tel" id="newSOPhone" placeholder="Phone" class="input input-lg">
                     <button class="btn-small" onclick="addUser()">+ Add SO</button>
                 </div>
                 <table>
@@ -205,14 +224,14 @@
         <div class="panel" id="panel-fleet">
             <div class="card">
                 <h3>Fleet Management</h3>
-                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <input type="text" id="fvVehicle" placeholder="Vehicle Number" style="width:160px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="text" id="fvDriver" placeholder="Driver Name" style="flex:1;min-width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="tel" id="fvPhone" placeholder="Driver Phone" style="width:130px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="number" id="fvCapacity" placeholder="Capacity (MT)" style="width:120px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                <div class="form-inline">
+                    <input type="text" id="fvVehicle" placeholder="Vehicle Number" class="input-xl">
+                    <input type="text" id="fvDriver" placeholder="Driver Name" class="input input-flex">
+                    <input type="tel" id="fvPhone" placeholder="Driver Phone" class="input input-lg">
+                    <input type="number" id="fvCapacity" placeholder="Capacity (MT)" class="input input-md">
                     <button class="btn-small" onclick="addVehicle()">+ Add Vehicle</button>
                 </div>
-                <div class="search-filters" style="margin-bottom:12px;">
+                <div class="search-filters mb-3">
                     <span class="sf-chip active" data-filter="all" onclick="setFleetFilter('all')">All</span>
                     <span class="sf-chip" data-filter="active" onclick="setFleetFilter('active')">Active</span>
                     <span class="sf-chip" data-filter="inactive" onclick="setFleetFilter('inactive')">Inactive</span>
@@ -228,11 +247,11 @@
         <!-- Vendors Panel -->
         <div class="panel" id="panel-vendors">
             <div class="card">
-                <h3>Transport Vendors <span id="vendorCount" style="font-size:12px;color:var(--gray-500);font-weight:400;"></span></h3>
-                <p style="margin-bottom:14px;">Manage transport contractors available for routes.</p>
-                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-                    <input type="text" id="newVendorName" placeholder="Vendor Name" style="flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
-                    <input type="tel" id="newVendorPhone" placeholder="Contact Phone" style="width:140px;padding:9px 12px;border:1.5px solid var(--gray-300);border-radius:6px;font-size:14px;">
+                <h3>Transport Vendors <span id="vendorCount" class="count-badge"></span></h3>
+                <p class="mb-3">Manage transport contractors available for routes.</p>
+                <div class="form-inline">
+                    <input type="text" id="newVendorName" placeholder="Vendor Name" class="input input-flex">
+                    <input type="tel" id="newVendorPhone" placeholder="Contact Phone" class="input input-lg">
                     <button class="btn-small" onclick="addVendor()">+ Add Vendor</button>
                 </div>
                 <table>
@@ -247,7 +266,7 @@
         <div class="panel" id="panel-notifications">
             <div class="card">
                 <h3>Notification Log</h3>
-                <p style="margin-bottom:14px;">Messages triggered by SO delivery actions. Ready for WhatsApp/SMS integration via n8n.</p>
+                <p class="mb-3">Messages triggered by SO delivery actions. Ready for WhatsApp/SMS integration via n8n.</p>
                 <table>
                     <thead><tr><th>Time</th><th>Type</th><th>Customer</th><th>Phone</th><th>Message</th><th>Status</th></tr></thead>
                     <tbody id="notificationsBody"></tbody>

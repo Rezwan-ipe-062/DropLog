@@ -18,11 +18,11 @@ async function loadContacts() {
 
         if (!data || data.length === 0) {
             tbody.innerHTML = '';
-            empty.style.display = 'block';
+            empty.classList.remove('hidden');
             return;
         }
 
-        empty.style.display = 'none';
+        empty.classList.add('hidden');
         var BASE = 'https://rezwan-ipe-062.github.io/DropLog/portal/?bp=';
         tbody.innerHTML = data.map(function(c) {
             var link = c.customer_id ? BASE + encodeURIComponent(c.customer_id) : '';
