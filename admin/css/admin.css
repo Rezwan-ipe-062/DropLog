@@ -288,6 +288,24 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
     flex-wrap: wrap;
     gap: 8px;
 }
+.rb-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.rb-search-input {
+    width: 160px;
+    padding: 6px 10px;
+    border: 1.5px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.rb-search-input:focus { border-color: var(--syn-blue); }
+.rb-search-input::placeholder { color: var(--gray-400); }
+[data-theme="dark"] .rb-search-input { background: #14161c; color: #e8eaed; border-color: #2a2d35; }
+[data-theme="dark"] .rb-search-input:focus { border-color: var(--syn-blue); }
 .rb-count-summary {
     font-size: 13px;
     color: var(--gray-500);
@@ -888,5 +906,7 @@ tbody tr:active { background: var(--gray-200); }
     .form-inline .input { width: 100% !important; }
     .rd-info-grid { grid-template-columns: 1fr; }
     .rb-count-row { flex-direction: column; align-items: flex-start; }
+    .rb-toolbar { width: 100%; }
+    .rb-toolbar .rb-search-input { flex: 1; width: auto; }
     .login-screen { padding: 16px; }
 }

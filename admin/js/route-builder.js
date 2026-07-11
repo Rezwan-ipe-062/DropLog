@@ -8,6 +8,7 @@ let selectedGDs = new Set();
 let selectedStops = new Set();
 let filterDates = new Set();
 let dateDropdownOpen = false;
+let searchQuery = '';
 let soList = [];
 let vehicleList = [];
 let vendorList = [];
@@ -191,6 +192,11 @@ function dateClearAll() {
     }
 }
 
+function setSearchQuery(val) {
+    searchQuery = val;
+    renderRouteBuilder();
+}
+
 function toggleStop(gdNum, stopId) {
     if (selectedStops.has(stopId)) selectedStops.delete(stopId);
     else selectedStops.add(stopId);
@@ -227,6 +233,17 @@ function renderRouteBuilder() {
         if (filterDates.size > 0) {
             filteredGDs = availableGDs.filter(gd => filterDates.has(gd.posting_date));
         }
+        if (searchQuery.trim()) {
+            const q = searchQuery.trim().toLowerCase();
+            filteredGDs = filteredGDs.filter(gd => {
+                if (String(gd.group_delivery_number).toLowerCase().includes(q)) return true;
+                const stops = getStopsForGD(gd);
+                return stops.some(s =>
+                    String(s.delivery_document).toLowerCase().includes(q) ||
+                    (s.delivery_documents || []).some(d => String(d).toLowerCase().includes(q))
+                );
+            });
+        }
 
         const multiStop = filteredGDs.filter(g => g.is_multi_stop);
         const singleStop = filteredGDs.filter(g => !g.is_multi_stop);
@@ -235,9 +252,11 @@ function renderRouteBuilder() {
         // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
         let leftHtml = '<div class="rb-count-row">';
-        leftHtml += '<div class="rb-count-summary">' + filteredGDs.length + (filterDates.size > 0 ? ' filtered GDs' : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
+        leftHtml += '<div class="rb-count-summary">' + filteredGDs.length + (filterDates.size > 0 || searchQuery ? ' GDs' : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
+        leftHtml += '<div class="rb-toolbar">';
+        leftHtml += '<input class="rb-search-input" type="text" placeholder="Search GD / DO..." value="' + escapeHtml(searchQuery) + '" oninput="setSearchQuery(this.value)">';
         leftHtml += renderDateFilter();
-        leftHtml += '</div>';
+        leftHtml += '</div></div>';
 
         if (multiStop.length > 0) {
             leftHtml += '<div class="rb-section">';
