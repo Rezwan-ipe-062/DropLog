@@ -31,8 +31,7 @@ async function loadUsers() {
             '<td>' + escapeHtml(u.warehouse || '-') + '</td>' +
             '<td>' + escapeHtml(u.phone || '-') + '</td>' +
             '<td class="mono-text">' + escapeHtml(u.pin_plain || '--') + '</td>' +
-            '<td><span class="link-delete" onclick="resetPin(\'' + u.id + '\', \'' + escapeHtml(u.name) + '\')">Reset</span></td>' +
-            '<td><span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
+            '<td><span class="link-delete" onclick="resetPin(\'' + u.id + '\', \'' + escapeHtml(u.name) + '\')">Reset</span> <span class="link-delete" onclick="deleteUser(\'' + u.id + '\')">Delete</span></td>' +
             '</tr>'
         ).join('');
     } catch (e) {
