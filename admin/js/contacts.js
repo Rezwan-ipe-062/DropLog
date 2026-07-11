@@ -1,7 +1,7 @@
 // ============================================================
 // DropLog Admin - Contacts Module
 // ============================================================
-// Handles: customer phone/email upload and management
+// Handles: customer phone number upload and management
 
 async function loadContacts() {
     if (!sb) return;
@@ -30,7 +30,6 @@ async function loadContacts() {
             '<td>' + escapeHtml(c.customer_id || '-') + '</td>' +
             '<td><strong>' + escapeHtml(c.customer_name || '') + '</strong></td>' +
             '<td>' + escapeHtml(c.phone || '-') + '</td>' +
-            '<td>' + escapeHtml(c.email || '-') + '</td>' +
             '<td>' + escapeHtml(c.district || '-') + '</td>' +
             '<td>' + (link ? '<a href="' + link + '" target="_blank" class="portal-link" title="' + link + '">Open</a> <span class="link-copy" onclick="copyToClipboard(\'' + link + '\')">Copy</span>' : '-') + '</td>' +
             '<td><span class="link-delete" onclick="deleteContact(\'' + c.id + '\')">Delete</span></td>' +
@@ -63,7 +62,6 @@ async function handleContactsUpload(event) {
             proprietor: r['Proprietor'] || null,
             address: r['Street (Market Place, Postal Area, Upazilla & District) '] || r['Address'] || null,
             phone: String(r['Telephone'] || r['Phone'] || r['Mobile'] || '').trim() || null,
-            email: (r['Email'] || '').trim() || null,
             district: (r['Region '] || r['Region'] || r['District'] || '').trim() || null,
             region: (r[' Zone Name'] || r['Zone'] || '').trim() || null,
             unit_name: r['Unit Name'] || null,
@@ -95,7 +93,6 @@ async function addContact() {
     const bpId = document.getElementById('addContactBpId').value.trim();
     const name = document.getElementById('addContactName').value.trim();
     const phone = document.getElementById('addContactPhone').value.trim();
-    const email = document.getElementById('addContactEmail').value.trim();
     const district = document.getElementById('addContactDistrict').value.trim();
 
     if (!name) { showToast('Enter customer name', 'warning'); return; }
@@ -105,7 +102,6 @@ async function addContact() {
             customer_id: bpId || null,
             customer_name: name,
             phone: phone || null,
-            email: email || null,
             district: district || null,
             plant_name: getWarehouseName()
         });
@@ -113,7 +109,6 @@ async function addContact() {
         document.getElementById('addContactBpId').value = '';
         document.getElementById('addContactName').value = '';
         document.getElementById('addContactPhone').value = '';
-        document.getElementById('addContactEmail').value = '';
         document.getElementById('addContactDistrict').value = '';
         showToast('Contact added', 'success');
         loadContacts();

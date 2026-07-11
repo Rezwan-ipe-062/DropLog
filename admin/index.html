@@ -164,7 +164,7 @@
                 <p class="mb-3">Upload customer list with phone/email for delivery notifications.</p>
                 <div class="upload-area mb-4">
                     <input type="file" accept=".xlsx,.xls,.csv" onchange="handleContactsUpload(event)">
-                    <p>Upload contacts file (BP ID, Name, Phone, Email)</p>
+                    <p>Upload contacts file (BP ID, Name, Phone)</p>
                 </div>
                 <div id="contactUploadStatus" class="upload-status"></div>
 
@@ -173,13 +173,12 @@
                     <input type="text" id="addContactBpId" placeholder="BP ID" class="input input-sm">
                     <input type="text" id="addContactName" placeholder="Customer Name" class="input input-flex">
                     <input type="tel" id="addContactPhone" placeholder="Phone" class="input input-md">
-                    <input type="email" id="addContactEmail" placeholder="Email" class="input input-flex">
                     <input type="text" id="addContactDistrict" placeholder="District" class="input input-lg">
                     <button class="btn-small" onclick="addContact()">+ Add</button>
                 </div>
 
                 <table>
-                    <thead><tr><th>BP ID</th><th>Customer</th><th>Phone</th><th>Email</th><th>District</th><th>Portal Link</th><th></th></tr></thead>
+                    <thead><tr><th>BP ID</th><th>Customer</th><th>Phone</th><th>District</th><th>Portal Link</th><th></th></tr></thead>
                     <tbody id="contactsBody"></tbody>
                 </table>
                 <p id="noContacts" class="empty-text">No contacts yet.</p>
@@ -211,7 +210,7 @@
             <div class="card">
                 <h3>Fleet Management</h3>
                 <div class="form-inline">
-                    <input type="text" id="fvVehicle" placeholder="Vehicle Number" class="input-xl">
+                    <input type="text" id="fvVehicle" placeholder="Vehicle Number" class="input input-flex">
                     <input type="text" id="fvDriver" placeholder="Driver Name" class="input input-flex">
                     <input type="tel" id="fvPhone" placeholder="Driver Phone" class="input input-lg">
                     <input type="number" id="fvCapacity" placeholder="Capacity (MT)" class="input input-md">
@@ -237,7 +236,7 @@
                 <p class="mb-3">Manage transport contractors available for routes.</p>
                 <div class="form-inline">
                     <input type="text" id="newVendorName" placeholder="Vendor Name" class="input input-flex">
-                    <input type="tel" id="newVendorPhone" placeholder="Contact Phone" class="input input-lg">
+                    <input type="tel" id="newVendorPhone" placeholder="Contact Phone" class="input input-flex">
                     <button class="btn-small" onclick="addVendor()">+ Add Vendor</button>
                 </div>
                 <table>
