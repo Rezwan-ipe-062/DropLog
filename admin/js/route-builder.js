@@ -194,16 +194,33 @@ function dateClearAll() {
 
 function setSearchQuery(val) {
     searchQuery = val;
-    const input = document.querySelector('.rb-search-input');
-    const selStart = input ? input.selectionStart : 0;
-    renderRouteBuilder();
-    requestAnimationFrame(function() {
-        const newInput = document.querySelector('.rb-search-input');
-        if (newInput) {
-            newInput.focus();
-            newInput.setSelectionRange(selStart, selStart);
+    applySearchFilter();
+}
+
+function applySearchFilter() {
+    var q = searchQuery.trim().toLowerCase();
+    var visibleCards = 0;
+    document.querySelectorAll('.gd-card, .bundle-card').forEach(function(card) {
+        if (!q) {
+            card.classList.remove('hidden');
+            visibleCards++;
+            return;
         }
+        var match = false;
+        var attrGd = card.getAttribute('data-gd') || card.getAttribute('data-gds') || '';
+        var attrDo = card.getAttribute('data-do') || card.getAttribute('data-dos') || '';
+        if (attrGd.toLowerCase().includes(q)) match = true;
+        if (attrDo.toLowerCase().includes(q)) match = true;
+        card.classList.toggle('hidden', !match);
+        if (match) visibleCards++;
     });
+    var summary = document.querySelector('.rb-count-summary');
+    if (summary && q) {
+        summary.textContent = visibleCards + ' of ' + document.querySelectorAll('.gd-card, .bundle-card').length + ' GDs match "' + q + '"';
+    } else if (summary && !q) {
+        var total = document.querySelectorAll('.gd-card, .bundle-card').length;
+        summary.textContent = total + ' Group Deliveries available for ' + escapeHtml(getWarehouseName());
+    }
 }
 
 function toggleStop(gdNum, stopId) {
@@ -242,17 +259,6 @@ function renderRouteBuilder() {
         if (filterDates.size > 0) {
             filteredGDs = availableGDs.filter(gd => filterDates.has(gd.posting_date));
         }
-        if (searchQuery.trim()) {
-            const q = searchQuery.trim().toLowerCase();
-            filteredGDs = filteredGDs.filter(gd => {
-                if (String(gd.group_delivery_number).toLowerCase().includes(q)) return true;
-                const stops = getStopsForGD(gd);
-                return stops.some(s =>
-                    String(s.delivery_document).toLowerCase().includes(q) ||
-                    (s.delivery_documents || []).some(d => String(d).toLowerCase().includes(q))
-                );
-            });
-        }
 
         const multiStop = filteredGDs.filter(g => g.is_multi_stop);
         const singleStop = filteredGDs.filter(g => !g.is_multi_stop);
@@ -261,7 +267,7 @@ function renderRouteBuilder() {
         // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
         let leftHtml = '<div class="rb-count-row">';
-        leftHtml += '<div class="rb-count-summary">' + filteredGDs.length + (filterDates.size > 0 || searchQuery ? ' GDs' : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
+        leftHtml += '<div class="rb-count-summary">' + filteredGDs.length + ' Group Deliveries available for ' + escapeHtml(getWarehouseName()) + '</div>';
         leftHtml += '<div class="rb-toolbar">';
         leftHtml += '<input class="rb-search-input" type="text" placeholder="Search GD / DO..." value="' + escapeHtml(searchQuery) + '" oninput="setSearchQuery(this.value)">';
         leftHtml += renderDateFilter();
@@ -306,6 +312,7 @@ function renderRouteBuilder() {
         container.innerHTML = '<div class="empty-state"><p class="error-text">Render error: ' + escapeHtml(e.message) + '</p></div>';
         showToast('Render error — see console', 'error');
     }
+    applySearchFilter();
 }
 
 function renderGDCard(gd) {
@@ -322,8 +329,9 @@ function renderGDCard(gd) {
 
     const gdNum = escapeHtml(String(gd.group_delivery_number));
     const selectionClass = allSelected ? 'selected' : (partial ? 'partial' : '');
+    var doAttr = stops.map(function(s) { return s.delivery_document ? String(s.delivery_document) : ''; }).concat(stops.filter(function(s) { return s.delivery_documents; }).flatMap(function(s) { return s.delivery_documents.map(String); })).filter(Boolean).join(' ');
 
-    let html = '<div class="gd-card ' + selectionClass + (isMulti ? ' multi' : '') + '" ';
+    let html = '<div class="gd-card ' + selectionClass + (isMulti ? ' multi' : '') + '" data-gd="' + gdNum + '" data-do="' + escapeHtml(doAttr) + '" ';
     html += 'onclick="toggleAllStopsForGD(\'' + gdNum.replace(/'/g, '\\\'') + '\')">';
 
     html += '<div class="gd-card-header">';
@@ -364,8 +372,10 @@ function renderBundleCard(bundle, idx) {
 
     const allSelected = bundle.gds.every(g => g && isGDAllSelected(g));
     const totalGds = bundle.gds.length || 0;
+    var bundleGdNums = bundle.gds.filter(Boolean).map(function(g) { return String(g.group_delivery_number); }).join(' ');
+    var bundleDoNums = bundle.gds.filter(Boolean).flatMap(function(g) { var s = getStopsForGD(g); return s ? s : []; }).map(function(s) { return s.delivery_document ? String(s.delivery_document) : ''; }).filter(Boolean).join(' ');
 
-    let html = '<div class="bundle-card ' + (allSelected ? 'selected' : '') + '">';
+    let html = '<div class="bundle-card ' + (allSelected ? 'selected' : '') + '" data-gds="' + escapeHtml(bundleGdNums) + '" data-dos="' + escapeHtml(bundleDoNums) + '">';
     html += '<div class="bundle-header" onclick="toggleBundleSelection(' + idx + ')">';
     html += '<input type="checkbox" ' + (allSelected ? 'checked' : '') + ' class="gd-checkbox" onclick="event.stopPropagation(); toggleBundleSelection(' + idx + ')">';
     html += '<div class="bundle-header-info">';
