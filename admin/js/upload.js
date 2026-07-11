@@ -416,7 +416,8 @@ async function clearAllData() {
         stopsCache = {};
         selectedGDs = new Set();
         selectedStops = new Set();
-        filterDate = null;
+        filterDates = new Set();
+        dateDropdownOpen = false;
 
         // Clear Route Builder UI
         var rbContent = document.getElementById('routeBuilderContent');

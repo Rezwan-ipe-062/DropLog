@@ -257,11 +257,39 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .bundle-gd-info strong { font-size: 12px; color: var(--gray-700); }
 .bundle-gd-info span { color: var(--gray-500); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.date-filter-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 12px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-200); }
-.date-filter-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-right: 4px; }
-.date-chip { padding: 4px 10px; border-radius: 12px; border: 1.5px solid var(--gray-300); background: var(--white); font-size: 12px; cursor: pointer; transition: all 0.15s; color: var(--gray-600); }
-.date-chip:hover { border-color: var(--syn-blue); color: var(--syn-blue); }
-.date-chip.active { background: var(--syn-blue); color: var(--white); border-color: var(--syn-blue); }
+.excel-date-filter { position: relative; margin-bottom: 12px; display: inline-block; }
+.excel-filter-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 6px; border: 1.5px solid var(--gray-300);
+    background: var(--white); font-size: 12px; font-weight: 600; color: var(--gray-600);
+    cursor: pointer; transition: all 0.15s;
+}
+.excel-filter-btn:hover { border-color: var(--syn-blue); color: var(--syn-blue); }
+.excel-filter-btn.active { border-color: var(--syn-blue); background: var(--syn-blue-light); color: var(--syn-blue); }
+.excel-filter-btn svg { flex-shrink: 0; }
+.excel-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+    min-width: 200px; max-height: 260px; background: var(--white);
+    border: 1px solid var(--gray-200); border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+.excel-dropdown.open { display: block; }
+.excel-dropdown-head {
+    display: flex; gap: 8px; padding: 8px 12px;
+    border-bottom: 1px solid var(--gray-100);
+}
+.excel-dd-action {
+    font-size: 11px; color: var(--syn-blue); background: none; border: none;
+    cursor: pointer; font-weight: 600; padding: 2px 0;
+}
+.excel-dd-action:hover { text-decoration: underline; }
+.excel-dropdown-list { max-height: 200px; overflow-y: auto; padding: 4px 0; }
+.excel-dd-item {
+    display: flex; align-items: center; gap: 8px; padding: 5px 12px;
+    font-size: 12px; color: var(--gray-700); cursor: pointer; transition: background 0.1s;
+}
+.excel-dd-item:hover { background: var(--gray-50); }
+.excel-dd-item input { width: 14px; height: 14px; accent-color: var(--syn-green); flex-shrink: 0; }
 
 .gd-card.partial { border-color: var(--syn-yellow, #f59e0b); background: rgba(245,158,11,0.04); }
 .gd-card.partial .gd-card-header { border-bottom-color: rgba(245,158,11,0.2); }
@@ -278,9 +306,12 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .bundle-stop-check span { flex: 1; display: flex; align-items: center; gap: 6px; }
 .bundle-gd-item.partial { border-color: var(--syn-yellow, #f59e0b); background: rgba(245,158,11,0.04); }
 
-[data-theme="dark"] .date-filter-bar { background: #14161c; border-color: #2a2d35; }
-[data-theme="dark"] .date-chip { background: #1a1d23; border-color: #3d4250; color: #9ca3af; }
-[data-theme="dark"] .date-chip.active { background: var(--syn-blue); color: #fff; }
+[data-theme="dark"] .excel-filter-btn { background: #1a1d23; border-color: #3d4250; color: #9ca3af; }
+[data-theme="dark"] .excel-filter-btn:hover { border-color: var(--syn-blue); color: var(--syn-blue); }
+[data-theme="dark"] .excel-filter-btn.active { background: rgba(0,123,204,0.1); border-color: var(--syn-blue); color: var(--syn-blue); }
+[data-theme="dark"] .excel-dropdown { background: #1a1d23; border-color: #3d4250; }
+[data-theme="dark"] .excel-dropdown-head { border-bottom-color: #2a2d35; }
+[data-theme="dark"] .excel-dd-item:hover { background: #2a2d35; }
 [data-theme="dark"] .gd-card.partial { background: rgba(245,158,11,0.06); }
 [data-theme="dark"] .bundle-gd-item.partial { background: rgba(245,158,11,0.06); }
 [data-theme="dark"] .bundle-stop-checks { border-top-color: #2a2d35; }

@@ -6,7 +6,8 @@ let availableGDs = [];
 let isCreatingRoute = false;
 let selectedGDs = new Set();
 let selectedStops = new Set();
-let filterDate = null;
+let filterDates = new Set();
+let dateDropdownOpen = false;
 let soList = [];
 let vehicleList = [];
 let vendorList = [];
@@ -53,7 +54,8 @@ async function loadAvailableGDs() {
 
         selectedGDs.clear();
         selectedStops.clear();
-        filterDate = null;
+        filterDates.clear();
+        dateDropdownOpen = false;
         renderRouteBuilder();
 
         // Load SO list (scoped to active warehouse — matches both short code and full name)
@@ -108,27 +110,85 @@ function hasSelectedStops() {
     return selectedStops.size > 0;
 }
 
-function renderDateChips() {
+function renderDateFilter() {
     const dates = [...new Set(availableGDs.map(g => g.posting_date).filter(Boolean))].sort().reverse();
     if (dates.length <= 1) return '';
-    let html = '<div class="date-filter-bar">';
-    html += '<span class="date-filter-label">Posting Date:</span>';
-    html += '<button class="date-chip ' + (!filterDate ? 'active' : '') + '" onclick="clearDateFilter()">All</button>';
+
+    const selCount = filterDates.size;
+    const label = selCount === 0 ? 'Posting Date' : 'Posting Date (' + selCount + ')';
+
+    let html = '<div class="excel-date-filter">';
+    html += '<button class="excel-filter-btn' + (selCount > 0 ? ' active' : '') + '" onclick="toggleDateDropdown(event)">';
+    html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>';
+    html += '<span>' + escapeHtml(label) + '</span>';
+    html += '</button>';
+
+    html += '<div class="excel-dropdown' + (dateDropdownOpen ? ' open' : '') + '" id="dateDropdown" onclick="event.stopPropagation()">';
+    html += '<div class="excel-dropdown-head">';
+    html += '<button class="excel-dd-action" onclick="event.stopPropagation(); dateSelectAll();">(Select All)</button>';
+    html += '<button class="excel-dd-action" onclick="event.stopPropagation(); dateClearAll();">(Clear)</button>';
+    html += '</div>';
+    html += '<div class="excel-dropdown-list">';
     dates.forEach(d => {
-        html += '<button class="date-chip ' + (filterDate === d ? 'active' : '') + '" onclick="filterByDate(\'' + d + '\')">' + formatDate(d) + '</button>';
+        const checked = filterDates.has(d) ? 'checked' : '';
+        html += '<label class="excel-dd-item" onclick="event.stopPropagation();">';
+        html += '<input type="checkbox" ' + checked + ' onchange="toggleDateFilter(\'' + d + '\')">';
+        html += '<span>' + formatDate(d) + '</span>';
+        html += '</label>';
     });
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     return html;
 }
 
-function filterByDate(date) {
-    filterDate = date;
+function toggleDateDropdown(e) {
+    if (e) e.stopPropagation();
+    dateDropdownOpen = !dateDropdownOpen;
     renderRouteBuilder();
+    if (dateDropdownOpen) {
+        setTimeout(function() {
+            document.addEventListener('click', closeDateDropdown, { once: true });
+        }, 0);
+    }
 }
 
-function clearDateFilter() {
-    filterDate = null;
+function closeDateDropdown() {
+    dateDropdownOpen = false;
+    var dd = document.getElementById('dateDropdown');
+    if (dd) dd.classList.remove('open');
+}
+
+function toggleDateFilter(date) {
+    if (filterDates.has(date)) filterDates.delete(date);
+    else filterDates.add(date);
     renderRouteBuilder();
+    if (dateDropdownOpen) {
+        setTimeout(function() {
+            document.addEventListener('click', closeDateDropdown, { once: true });
+        }, 0);
+    }
+}
+
+function dateSelectAll() {
+    var dates = [...new Set(availableGDs.map(function(g) { return g.posting_date; }).filter(Boolean))];
+    dates.forEach(function(d) { filterDates.add(d); });
+    renderRouteBuilder();
+    if (dateDropdownOpen) {
+        setTimeout(function() {
+            document.addEventListener('click', closeDateDropdown, { once: true });
+        }, 0);
+    }
+}
+
+function dateClearAll() {
+    filterDates.clear();
+    renderRouteBuilder();
+    if (dateDropdownOpen) {
+        setTimeout(function() {
+            document.addEventListener('click', closeDateDropdown, { once: true });
+        }, 0);
+    }
 }
 
 function toggleStop(gdNum, stopId) {
@@ -164,8 +224,8 @@ function renderRouteBuilder() {
 
     try {
         let filteredGDs = availableGDs;
-        if (filterDate) {
-            filteredGDs = availableGDs.filter(gd => gd.posting_date === filterDate);
+        if (filterDates.size > 0) {
+            filteredGDs = availableGDs.filter(gd => filterDates.has(gd.posting_date));
         }
 
         const multiStop = filteredGDs.filter(g => g.is_multi_stop);
@@ -174,8 +234,8 @@ function renderRouteBuilder() {
 
         // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
-        let leftHtml = '<div class="rb-count-summary">' + filteredGDs.length + (filterDate ? ' GDs on ' + formatDate(filterDate) : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
-        leftHtml += renderDateChips();
+        let leftHtml = '<div class="rb-count-summary">' + filteredGDs.length + (filterDates.size > 0 ? ' filtered GDs' : ' Group Deliveries available') + ' for ' + escapeHtml(getWarehouseName()) + '</div>';
+        leftHtml += renderDateFilter();
 
         if (multiStop.length > 0) {
             leftHtml += '<div class="rb-section">';
