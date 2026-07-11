@@ -7,9 +7,10 @@ async function loadDashboard() {
     try {
         const wh = getWarehouseName();
 
-        const [routesRes, issuesRes] = await Promise.all([
+        const [routesRes, issuesRes, excRes] = await Promise.all([
             sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops').eq('plant_name', wh),
-            sb.from('issues').select('*, routes!inner(plant_name)').eq('routes.plant_name', wh).eq('acknowledged', false)
+            sb.from('issues').select('*, routes!inner(plant_name)').eq('routes.plant_name', wh).eq('acknowledged', false),
+            sb.from('route_stops').select('id', { count: 'exact', head: true }).eq('delivery_exception', true).eq('routes.plant_name', wh)
         ]);
 
         if (routesRes.error) { console.error('dashboard routes query:', routesRes.error); }
@@ -20,12 +21,14 @@ async function loadDashboard() {
         const inTransit = routes.filter(r => r.status === 'in_transit').length;
         const completed = routes.filter(r => r.status === 'completed').length;
         const openIssues = (issuesRes.data || []).length;
+        const exceptions = excRes.count || 0;
 
         document.getElementById('statTotal').textContent = routes.length;
         document.getElementById('statPending').textContent = pending;
         document.getElementById('statTransit').textContent = inTransit;
         document.getElementById('statCompleted').textContent = completed;
         document.getElementById('statIssues').textContent = openIssues;
+        document.getElementById('statExceptions').textContent = exceptions;
 
         await loadActiveRoutes();
         await loadRecentRoutes();
@@ -147,7 +150,7 @@ function filterByStatus(status) {
 
     document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
     if (_activeFilter) {
-        const labels = { pending: 'Pending', active: 'In Transit', completed: 'Completed', issues: 'Open Issues' };
+        const labels = { pending: 'Pending', active: 'In Transit', completed: 'Completed', issues: 'Open Issues', exceptions: 'Delivery Exceptions' };
         document.querySelectorAll('.stat-card').forEach(c => {
             const lbl = c.querySelector('.stat-label');
             if (lbl && lbl.textContent === labels[_activeFilter]) c.classList.add('active');
@@ -156,6 +159,8 @@ function filterByStatus(status) {
 
     if (_activeFilter === 'issues') {
         loadIssueRoutes();
+    } else if (_activeFilter === 'exceptions') {
+        loadExceptionRoutes();
     } else {
         loadRecentRoutes(_activeFilter);
     }
@@ -197,6 +202,47 @@ async function loadIssueRoutes() {
         }).join('');
     } catch (e) {
         console.error('loadIssueRoutes:', e);
+    }
+}
+
+async function loadExceptionRoutes() {
+    try {
+        const { data } = await sb
+            .from('route_stops')
+            .select('*, routes!inner(route_code, route_name, district, plant_name)')
+            .eq('routes.plant_name', getWarehouseName())
+            .eq('delivery_exception', true)
+            .order('customer_responded_at', { ascending: false })
+            .limit(100);
+
+        const tbody = document.getElementById('recentRoutesBody');
+        const filterLabel = document.getElementById('filterLabel');
+        const clearFilter = document.getElementById('clearFilter');
+        if (filterLabel) filterLabel.textContent = 'Delivery Exceptions (' + (data || []).length + ')';
+        if (clearFilter) clearFilter.style.display = 'inline';
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No delivery exceptions.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(stop => {
+            const r = stop.routes || {};
+            const respLabel = stop.customer_response === 'not_received' ? '<span class="status-badge status-pending">Not Received</span>' :
+                              stop.customer_response === 'confirmed_received' ? '<span class="status-badge status-completed">Confirmed</span>' :
+                              '<span class="status-badge status-pending">No Response</span>';
+            return '<tr onclick="viewRouteDetail(\'' + stop.route_id + '\')" style="cursor:pointer;">' +
+                '<td><strong>' + escapeHtml(r.route_code || '?') + '</strong></td>' +
+                '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
+                '<td>' + escapeHtml(stop.customer_name || '-') + '</td>' +
+                '<td>' + (stop.customer_responded_at ? formatDate(stop.customer_responded_at) : '--') + '</td>' +
+                '<td>' + respLabel + '</td>' +
+                '<td><span class="status-badge status-pending">Exception</span></td>' +
+                '<td>' + escapeHtml(stop.customer_remark || '--').substring(0, 25) + '</td>' +
+                '</tr>';
+        }).join('');
+    } catch (e) {
+        console.error('loadExceptionRoutes:', e);
     }
 }
 
@@ -347,9 +393,10 @@ async function viewRouteDetail(routeId) {
     html += '</div>';
 
     html += '<h3 class="rd-section-title">Delivery Stops</h3>';
-    html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Confirmed</th><th>Time</th><th>Remark</th></tr></thead><tbody>';
+    html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Confirmed</th><th>Customer Reply</th><th>Time</th></tr></thead><tbody>';
     (stops || []).forEach(function(stop) {
         var rowClass = stop.status === 'failed' ? 'rd-row-failed' : stop.status === 'partial' ? 'rd-row-partial' : stop.status === 'delivered' ? 'rd-row-done' : '';
+        if (stop.delivery_exception) rowClass += ' rd-row-failed';
         var statusBadge = stop.status === 'delivered' ? '<span class="rd-badge rd-badge-green">Delivered</span>' :
                          stop.status === 'partial' ? '<span class="rd-badge rd-badge-orange">Partial</span>' :
                          stop.status === 'failed' ? '<span class="rd-badge rd-badge-red">Failed</span>' :
@@ -357,14 +404,17 @@ async function viewRouteDetail(routeId) {
         var confirmedBadge = stop.customer_confirmed_at
             ? '<span class="rd-badge rd-badge-green" title="' + formatTime(stop.customer_confirmed_at) + ' ' + formatDate(stop.customer_confirmed_at) + '">Yes</span>'
             : '<span class="rd-badge rd-badge-gray">--</span>';
+        var respText = '--';
+        if (stop.customer_response === 'confirmed_received') respText = '<span class="rd-badge rd-badge-green">Yes, received</span>';
+        else if (stop.customer_response === 'not_received') respText = '<span class="rd-badge rd-badge-red">No, not received</span>';
         html += '<tr class="' + rowClass + '">';
         html += '<td>' + stop.stop_sequence + '</td>';
         html += '<td><strong>' + stop.customer_name + '</strong></td>';
-        html += '<td>' + (stop.address || '--').substring(0, 35) + '</td>';
+        html += '<td>' + (stop.address || '--').substring(0, 30) + '</td>';
         html += '<td>' + statusBadge + '</td>';
         html += '<td>' + confirmedBadge + '</td>';
+        html += '<td>' + respText + '</td>';
         html += '<td>' + (stop.delivered_at ? formatTime(stop.delivered_at) : '--') + '</td>';
-        html += '<td class="rd-remark">' + (stop.remark || '--') + '</td>';
         html += '</tr>';
     });
     html += '</tbody></table>';

@@ -25,6 +25,8 @@ const CONFIG = {
     VERSION: '2.0.0',
     PLANT_NAME: WAREHOUSE_MAP[ACTIVE_WAREHOUSE_CODE].name,
     PLANT_SHORT: ACTIVE_WAREHOUSE_CODE,
+    PORTAL_BASE: 'https://rezwan-ipe-062.github.io/DropLog/portal/?bp=',
+    PORTAL_CONFIRM: 'https://rezwan-ipe-062.github.io/DropLog/portal/confirm/?stop=',
 
     // SAP Parser â€” columns to extract from "Data" sheet
     SAP_COLUMNS: {

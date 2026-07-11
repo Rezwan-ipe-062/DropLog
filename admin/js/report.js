@@ -300,11 +300,12 @@ async function generateRouteReport(routeId) {
     doc.setFont('helvetica', 'bold');
     doc.text('#', tableX + 2, y + 4.2);
     doc.text('Customer', tableX + 10, y + 4.2);
-    doc.text('Location', tableX + 58, y + 4.2);
-    doc.text('Status', tableX + 102, y + 4.2);
-    doc.text('Time', tableX + 125, y + 4.2);
-    doc.text('GPS', tableX + 148, y + 4.2);
-    doc.text('Remark', tableX + 165, y + 4.2);
+    doc.text('Location', tableX + 48, y + 4.2);
+    doc.text('Status', tableX + 90, y + 4.2);
+    doc.text('Time', tableX + 112, y + 4.2);
+    doc.text('WA', tableX + 132, y + 4.2);
+    doc.text('Customer Reply', tableX + 146, y + 4.2);
+    doc.text('Exception', tableX + 178, y + 4.2);
     y += 7;
 
     // Table rows
@@ -331,10 +332,10 @@ async function generateRouteReport(routeId) {
         doc.text(String(i + 1), tableX + 2, y);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
-        doc.text(stop.customer_name.substring(0, 22), tableX + 10, y);
+        doc.text(stop.customer_name.substring(0, 18), tableX + 10, y);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-        doc.text((stop.address || '').substring(0, 22), tableX + 58, y);
+        doc.text((stop.address || '').substring(0, 18), tableX + 48, y);
 
         // Status with color
         if (stop.status === 'delivered') { doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]); }
@@ -342,20 +343,39 @@ async function generateRouteReport(routeId) {
         else if (stop.status === 'partial') { doc.setTextColor(230, 81, 0); }
         else { doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]); }
         doc.setFont('helvetica', 'bold');
-        doc.text((stop.status || 'pending').toUpperCase(), tableX + 102, y);
+        doc.text((stop.status || 'pending').toUpperCase(), tableX + 90, y);
 
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'normal');
-        doc.text(stop.delivered_at ? fTime(stop.delivered_at) : '--', tableX + 125, y);
+        doc.text(stop.delivered_at ? fTime(stop.delivered_at) : '--', tableX + 112, y);
 
-        // GPS
-        var gpsText = (stop.gps_lat && stop.gps_lng) ? stop.gps_lat.toFixed(4) + ', ' + stop.gps_lng.toFixed(4) : '--';
+        // WhatsApp status
+        var waStatus = stop.whatsapp_confirm_status || 'not_sent';
+        var waColor = waStatus === 'sent' ? synGreen : waStatus === 'failed' ? red : grayDark;
+        doc.setTextColor(waColor[0], waColor[1], waColor[2]);
         doc.setFontSize(5.5);
-        doc.text(gpsText, tableX + 148, y);
+        doc.text(waStatus === 'not_sent' ? '--' : waStatus.toUpperCase(), tableX + 132, y);
         doc.setFontSize(7);
 
-        // Remark
-        doc.text((stop.remark || '').substring(0, 18), tableX + 165, y);
+        // Customer response
+        var resp = stop.customer_response || 'no_response';
+        var respLabel = resp === 'confirmed_received' ? 'Yes, received' : resp === 'not_received' ? 'No, not received' : '--';
+        var respColor = resp === 'confirmed_received' ? synGreen : resp === 'not_received' ? red : grayDark;
+        doc.setTextColor(respColor[0], respColor[1], respColor[2]);
+        doc.text(respLabel.substring(0, 16), tableX + 146, y);
+
+        // Exception flag
+        if (stop.delivery_exception) {
+            doc.setTextColor(red[0], red[1], red[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text('FLAG', tableX + 178, y);
+        } else {
+            doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+            doc.text('--', tableX + 178, y);
+        }
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
 
         y += 5.5;
     });

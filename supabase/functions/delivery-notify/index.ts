@@ -6,7 +6,6 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const WHATSAPP_TOKEN = Deno.env.get('WHATSAPP_TOKEN') || ''
 const WHATSAPP_PHONE_ID = Deno.env.get('WHATSAPP_PHONE_ID') || ''
 const VERIFY_TOKEN = Deno.env.get('VERIFY_TOKEN') || 'droplog_verify_2026'
-const PORTAL_BASE = 'https://rezwan-ipe-062.github.io/DropLog/portal/?bp='
 
 serve(async (req) => {
     const url = new URL(req.url)
@@ -60,14 +59,19 @@ async function handleDeliveryNotify(body: { route_stop_id: string }) {
         .maybeSingle()
 
     if (!contact || !contact.phone) {
+        await sb.from('route_stops').update({
+            whatsapp_confirm_status: 'failed',
+            whatsapp_confirm_sent_at: new Date().toISOString()
+        }).eq('id', stop.id)
         return new Response(JSON.stringify({ ok: true, skipped: 'no phone' }))
     }
 
-    const route = stop.routes || {}
-    const message = `Your delivery via ${route.vehicle_number || ''} (${route.route_code || ''}) has been completed. Did everything go well? Reply YES or describe any issue.`
+    const now = new Date().toISOString()
+
+    const bodyText = 'আপনি কি আপনার পণ্য পেয়েছেন? নিচের যেকোনো একটি অপশন চাপুন।'
 
     const waRes = await fetch(
-        `https://graph.facebook.com/v18.0/${WHATSAPP_PHONE_ID}/messages`,
+        `https://graph.facebook.com/v21.0/${WHATSAPP_PHONE_ID}/messages`,
         {
             method: 'POST',
             headers: {
@@ -77,16 +81,57 @@ async function handleDeliveryNotify(body: { route_stop_id: string }) {
             body: JSON.stringify({
                 messaging_product: 'whatsapp',
                 to: contact.phone,
-                type: 'text',
-                text: { body: message },
+                type: 'interactive',
+                interactive: {
+                    type: 'button',
+                    body: { text: bodyText },
+                    action: {
+                        buttons: [
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: 'ha_paisi_' + stop.id,
+                                    title: 'হ্যাঁ, পেয়েছি'
+                                }
+                            },
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: 'na_paini_' + stop.id,
+                                    title: 'না, পাইনি'
+                                }
+                            }
+                        ]
+                    }
+                }
             }),
         }
     )
 
+    const status = waRes.ok ? 'sent' : 'failed'
+    await sb.from('route_stops').update({
+        whatsapp_confirm_status: status,
+        whatsapp_confirm_sent_at: now
+    }).eq('id', stop.id)
+
     if (!waRes.ok) {
         const errText = await waRes.text()
-        console.error('whatsapp send failed:', errText)
+        console.error('whatsapp confirm failed:', errText)
     }
+
+    const route = stop.routes || {}
+    await sb.from('notifications').insert({
+        route_id: stop.route_id,
+        route_stop_id: stop.id,
+        message_type: 'whatsapp_confirm',
+        message_text: bodyText,
+        recipient_name: stop.customer_name,
+        recipient_phone: contact.phone,
+        channel: 'whatsapp',
+        status: status,
+        triggered_at: now,
+        sent_at: waRes.ok ? now : null
+    })
 
     return new Response(JSON.stringify({ ok: true, sent: waRes.ok }))
 }
@@ -102,6 +147,37 @@ async function handleReply(body: any) {
     }
 
     const fromPhone = message.from
+    const now = new Date().toISOString()
+
+    if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
+        const buttonId = message.interactive.button_reply.id || ''
+
+        let stopId = ''
+        let response = ''
+        if (buttonId.startsWith('ha_paisi_')) {
+            stopId = buttonId.substring('ha_paisi_'.length)
+            response = 'confirmed_received'
+        } else if (buttonId.startsWith('na_paini_')) {
+            stopId = buttonId.substring('na_paini_'.length)
+            response = 'not_received'
+        }
+
+        if (stopId && response) {
+            const update: any = {
+                customer_response: response,
+                customer_responded_at: now,
+                customer_confirmed_at: now
+            }
+            if (response === 'not_received') {
+                update.delivery_exception = true
+            }
+
+            await sb.from('route_stops').update(update).eq('id', stopId)
+
+            return new Response(JSON.stringify({ ok: true, response, stopId }))
+        }
+    }
+
     const text = (message.text?.body || '').trim().toLowerCase()
 
     const { data: contact } = await sb
@@ -128,12 +204,15 @@ async function handleReply(body: any) {
         return new Response(JSON.stringify({ ok: true, skipped: 'no pending confirmation' }))
     }
 
-    const isConfirmed = text === 'yes' || text === 'y' || text === 'ok' || text === 'confirmed'
+    const isConfirmed = text === 'yes' || text === 'y' || text === 'ok' || text === 'confirmed' || text === 'হ্যাঁ' || text === 'ha'
     const update: any = {
-        customer_confirmed_at: new Date().toISOString(),
+        customer_confirmed_at: now,
+        customer_response: isConfirmed ? 'confirmed_received' : 'not_received',
+        customer_responded_at: now
     }
     if (!isConfirmed) {
         update.customer_remark = message.text?.body?.trim() || null
+        update.delivery_exception = true
     }
 
     await sb.from('route_stops').update(update).eq('id', stop.id)

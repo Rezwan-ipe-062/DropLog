@@ -5,7 +5,9 @@ const CONFIG = {
     SUPABASE_URL: 'https://afovfoaraolalebvookx.supabase.co',
     SUPABASE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmb3Zmb2FyYW9sYWxlYnZvb2t4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMzNTExMDksImV4cCI6MjA5ODkyNzEwOX0.mFQa-RvRYm-Rol7_I5O0vVThAf5Tfd59w6F5Fa3w7Bw',
     APP_NAME: 'DropLog',
-    VERSION: '2.0.0'
+    VERSION: '2.0.0',
+    PORTAL_BASE: 'https://rezwan-ipe-062.github.io/DropLog/portal/?bp=',
+    PORTAL_CONFIRM: 'https://rezwan-ipe-062.github.io/DropLog/portal/confirm/?stop='
 };
 
 let sb = null;

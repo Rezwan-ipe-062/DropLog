@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DropLog — Delivery Confirmation</title>
+    <meta name="theme-color" content="#00457C">
+    <link rel="icon" href="../icon-192.png">
+    <link rel="apple-touch-icon" href="../icon-192.png">
+    <style>
+        :root {
+            --syn-blue: #00457C;
+            --syn-green: #00A94F;
+            --gray-100: #f4f5f7;
+            --gray-300: #c8ccd4;
+            --gray-900: #1a1d23;
+            --red: #b71c1c;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-900);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            padding: 40px 28px 32px;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .brand {
+            width: 56px; height: 56px;
+            border-radius: 14px;
+            background: var(--syn-blue);
+            display: grid; place-items: center;
+            margin: 0 auto 20px;
+        }
+        .brand img { width: 32px; height: 32px; }
+        h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+        .sub { color: #6b7080; font-size: 0.9rem; margin-bottom: 28px; line-height: 1.5; }
+        .stop-info {
+            background: #f4f5f7;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+            text-align: left;
+        }
+        .stop-info strong { display: block; font-size: 0.95rem; margin-bottom: 2px; }
+        .stop-info span { display: block; font-size: 0.82rem; color: #6b7080; }
+        .btn-group { display: flex; gap: 12px; }
+        .btn {
+            flex: 1;
+            padding: 16px 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-yes {
+            background: var(--syn-green);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(0,169,79,0.3);
+        }
+        .btn-no {
+            background: #fef2f2;
+            color: var(--red);
+            border: 2px solid #fecaca;
+        }
+        .result { display: none; padding: 20px 0; }
+        .result-icon {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            display: grid; place-items: center;
+            margin: 0 auto 16px;
+            font-size: 2rem;
+        }
+        .result-icon.ok { background: #e6f7ee; color: var(--syn-green); }
+        .result-icon.fail { background: #fef2f2; color: var(--red); }
+        .result h2 { font-size: 1.1rem; margin-bottom: 6px; }
+        .result p { color: #6b7080; font-size: 0.88rem; }
+        .loading { display: none; padding: 20px 0; color: #6b7080; font-size: 0.9rem; }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid #e2e5ea;
+            border-top-color: var(--syn-blue);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error { color: var(--red); font-size: 0.85rem; margin-top: 12px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card" id="confirmCard">
+        <div class="brand">
+            <img src="../icon-192.png" alt="DropLog">
+        </div>
+        <h1>ডেলিভারি নিশ্চিতকরণ</h1>
+        <p class="sub">আপনি কি আপনার পণ্য পেয়েছেন?</p>
+
+        <div class="stop-info" id="stopInfo">
+            <strong id="stopName">---</strong>
+            <span id="stopAddress">---</span>
+        </div>
+
+        <div id="btnGroup" class="btn-group">
+            <button class="btn btn-yes" onclick="respond('yes')">হ্যাঁ, পেয়েছি</button>
+            <button class="btn btn-no" onclick="respond('no')">না, পাইনি</button>
+        </div>
+
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            Processing...
+        </div>
+
+        <div class="result" id="resultOk">
+            <div class="result-icon ok">&#10003;</div>
+            <h2>ধন্যবাদ!</h2>
+            <p>আপনার ডেলিভারি নিশ্চিত হয়েছে।</p>
+        </div>
+
+        <div class="result" id="resultNo">
+            <div class="result-icon fail">&#10007;</div>
+            <h2>আমরা দুঃখিত</h2>
+            <p>আমাদের টিম শীঘ্রই আপনার সাথে যোগাযোগ করবে।</p>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="confirm.js"></script>
+</body>
+</html>
