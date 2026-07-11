@@ -186,7 +186,7 @@ async function handleStartRoute() {
     }
 }
 
-function renderStartScreen() {
+async function renderStartScreen() {
     document.getElementById('startRouteName').textContent = routeData.route_name || routeData.route_code;
     document.getElementById('startRouteCode').textContent = routeData.route_code;
     document.getElementById('startVehicle').textContent = routeData.vehicle_number || '--';
@@ -196,11 +196,12 @@ function renderStartScreen() {
 
     // Auto-fill vehicle capacity from fleet registry
     if (routeData.vehicle_number && sb) {
-        sb.from('fleet_vehicles').select('capacity_kg').eq('vehicle_number', routeData.vehicle_number).maybeSingle().then(function(res) {
-            if (res.data && res.data.capacity_kg) {
-                document.getElementById('startVehicleCapacity').value = (res.data.capacity_kg / 1000).toFixed(1);
+        try {
+            const { data: fleetRow } = await sb.from('fleet_vehicles').select('capacity_mt').eq('vehicle_number', routeData.vehicle_number).maybeSingle();
+            if (fleetRow && fleetRow.capacity_mt) {
+                document.getElementById('startVehicleCapacity').value = fleetRow.capacity_mt;
             }
-        }).catch(function() {});
+        } catch (e) {}
     }
 
     // Show customer list preview

@@ -3,10 +3,10 @@
 // ============================================================
 
 const WAREHOUSE_MAP = {
-    CTG: { name: 'CHITTAGONG', short: 'CTG' },
-    GAZ: { name: 'GAZIPUR',    short: 'GAZ' },
-    JSR: { name: 'JASHORE',    short: 'JSR' },
-    BGR: { name: 'BOGURA',     short: 'BGR' },
+    CTG: { name: 'CHITTAGONG', short: 'CTG', aliases: ['CHATTOGRAM', 'CHITTAGONG'] },
+    GAZ: { name: 'GAZIPUR',    short: 'GAZ', aliases: ['GAZIPUR'] },
+    JSR: { name: 'JASHORE',    short: 'JSR', aliases: ['JASHORE'] },
+    BGR: { name: 'BOGURA',     short: 'BGR', aliases: ['BOGURA'] },
 };
 
 // Parse ?wh= from URL or default to CTG
@@ -131,6 +131,26 @@ function getWarehouseName() {
 
 function getWarehouseList() {
     return Object.entries(WAREHOUSE_MAP).map(([code, w]) => ({ code, name: w.name }));
+}
+
+function matchesWarehouse(plantName) {
+    if (!plantName) return false;
+    var normalized = plantName.trim().toUpperCase();
+    var wh = WAREHOUSE_MAP[ACTIVE_WAREHOUSE_CODE];
+    if (!wh) return false;
+    return wh.aliases.some(function(a) { return a.toUpperCase() === normalized; });
+}
+
+function normalizePlantName(plantName) {
+    if (!plantName) return getWarehouseName();
+    var normalized = plantName.trim().toUpperCase();
+    for (var code in WAREHOUSE_MAP) {
+        var wh = WAREHOUSE_MAP[code];
+        if (wh.aliases && wh.aliases.some(function(a) { return a.toUpperCase() === normalized; })) {
+            return wh.name;
+        }
+    }
+    return normalized;
 }
 
 function switchWarehouse(code) {

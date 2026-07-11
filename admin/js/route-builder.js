@@ -94,7 +94,7 @@ function renderRouteBuilder() {
     // console.log('[DEBUG] renderRouteBuilder: availableGDs.length=' + availableGDs.length + ' selectedGDs.size=' + selectedGDs.size);
 
     if (availableGDs.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>No available GDs. Upload an SAP export first.</p></div>';
+        container.innerHTML = '<div class="empty-state"><p>No available GDs for ' + escapeHtml(getWarehouseName()) + '. Upload an SAP export first.</p></div>';
         return;
     }
 
@@ -105,7 +105,7 @@ function renderRouteBuilder() {
 
         // console.log('[DEBUG] renderRouteBuilder: multi=' + multiStop.length + ' single=' + singleStop.length + ' bundles=' + bundles.length);
 
-        let leftHtml = '';
+        let leftHtml = '<div class="rb-count-summary">' + availableGDs.length + ' Group Deliveries available for ' + escapeHtml(getWarehouseName()) + '</div>';
 
         if (multiStop.length > 0) {
             leftHtml += '<div class="rb-section">';
@@ -236,9 +236,12 @@ function renderBundleCard(bundle, idx) {
 function renderRouteForm() {
     let html = '<h3>Create Route</h3>';
     html += '<div class="form-row">';
-    html += '<div class="form-group"><label>Vehicle Number</label><select id="rfVehicle"><option value="">- Select Vehicle -</option></select></div>';
+    html += '<div class="form-group"><label>Vehicle Number</label><select id="rfVehicle" onchange="onRouteVehicleChange()"><option value="">- Select Vehicle -</option></select></div>';
     html += '<div class="form-group"><label>Vehicle Type</label><select id="rfVehicleType"><option value="cover_truck">Cover Truck</option><option value="open_truck">Open Truck</option><option value="pickup">Pickup</option></select></div>';
     html += '<div class="form-group"><label>Vendor</label><select id="rfVendor"><option value="">- Select Vendor -</option></select></div>';
+    html += '</div>';
+    html += '<div class="form-row">';
+    html += '<div class="form-group" id="rfCapacityGroup" style="display:none;"><label>Vehicle Capacity</label><div id="rfCapacityDisplay" style="padding:9px 12px;background:var(--gray-100);border-radius:6px;font-size:14px;color:var(--gray-600);">—</div></div>';
     html += '</div>';
     html += '<div class="form-row">';
     html += '<div class="form-group"><label>Assign SO</label><select id="rfSO"><option value="">- Select Supply Officer -</option></select></div>';
@@ -325,6 +328,23 @@ function closeRouteForm() {
     renderRouteBuilder();
 }
 
+function onRouteVehicleChange() {
+    var vehicleNum = document.getElementById('rfVehicle').value;
+    var capGroup = document.getElementById('rfCapacityGroup');
+    var capDisplay = document.getElementById('rfCapacityDisplay');
+    if (!vehicleNum) {
+        capGroup.style.display = 'none';
+        return;
+    }
+    var vehicle = vehicleList.find(function(v) { return v.vehicle_number === vehicleNum; });
+    if (vehicle && vehicle.capacity_mt) {
+        capDisplay.textContent = vehicle.capacity_mt + ' MT';
+    } else {
+        capDisplay.textContent = 'Not set';
+    }
+    capGroup.style.display = 'block';
+}
+
 // ---- Create Route ----
 
 async function createRoute() {
@@ -339,6 +359,10 @@ async function createRoute() {
     const vendor = document.getElementById('rfVendor').value.trim();
     const soId = document.getElementById('rfSO').value;
     const routeName = document.getElementById('rfName').value.trim();
+
+    // Look up vehicle capacity from fleet registry
+    const selectedVehicle = vehicleList.find(function(v) { return v.vehicle_number === vehicle; });
+    const vehicleCapacityMt = selectedVehicle && selectedVehicle.capacity_mt ? selectedVehicle.capacity_mt : null;
 
     if (!vehicle) {
         showToast('Enter vehicle number', 'warning');
@@ -372,6 +396,7 @@ async function createRoute() {
                 assigned_so_id: soId || null,
                 vehicle_number: vehicle,
                 vehicle_type: vehicleType,
+                vehicle_capacity_mt: vehicleCapacityMt,
                 vendor_name: vendor,
                 dispatch_date: dispatchDate,
                 plant_name: getWarehouseName(),

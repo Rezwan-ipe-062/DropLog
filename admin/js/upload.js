@@ -38,14 +38,18 @@ async function handleSAPUpload(event) {
         }
 
         statusEl.textContent = 'Parsed ' + mapped.length + ' rows. Grouping...';
-        const grouped = groupIntoStructure(mapped);
+        const groupedResult = groupIntoStructure(mapped);
+        const grouped = groupedResult.results;
+        const mergedCount = groupedResult.mergedCount;
 
         statusEl.textContent = 'Found ' + grouped.length + ' Group Deliveries. Writing to database...';
 
         const result = await writeToSupabase(mapped, grouped);
 
         if (result.success) {
-            statusEl.textContent = '[OK] ' + grouped.length + ' GDs uploaded (' + result.stops + ' stops, ' + result.products + ' product lines)';
+            var msg = '[OK] ' + grouped.length + ' GDs uploaded (' + result.stops + ' stops, ' + result.products + ' product lines)';
+            if (mergedCount > 0) msg += ' — ' + mergedCount + ' GD(s) merged across plant name variants';
+            statusEl.textContent = msg;
             statusEl.className = 'upload-status success';
             showToast('Upload complete', 'success');
             if (typeof loadAvailableGDs === 'function') loadAvailableGDs();
@@ -156,6 +160,8 @@ function mapColumns(rows) {
         mapped.delivery_document = String(mapped.delivery_document || '').trim();
         mapped.bill_to_party_id = String(mapped.bill_to_party_id || '').trim();
         mapped.delivered_quantity = Number(mapped.delivered_quantity) || 0;
+        mapped._raw_plant_name = String(mapped.plant_name || '').trim();
+        mapped.plant_name = normalizePlantName(mapped.plant_name);
         // Convert date fields from Excel serial numbers
         mapped.posting_date = excelDateToISO(mapped.posting_date);
         mapped.delivery_document_date = excelDateToISO(mapped.delivery_document_date);
@@ -174,8 +180,15 @@ function groupIntoStructure(rows) {
     });
 
     const results = [];
+    let mergedCount = 0;
 
     for (const [gdNum, gdRows] of Object.entries(gdMap)) {
+        // Detect if same GD appeared under different plant name spellings
+        const rawNames = [...new Set(gdRows.map(r => r._raw_plant_name).filter(Boolean))];
+        if (rawNames.length > 1) {
+            mergedCount++;
+            console.log('GD ' + gdNum + ' appeared under multiple plant names:', rawNames.join(', '), '— normalized to', gdRows[0].plant_name);
+        }
         const stopMap = {};
         gdRows.forEach(row => {
             const key = (row.bill_to_party_id || '') + '||' + (row.bill_to_party_name || '');
@@ -214,7 +227,7 @@ function groupIntoStructure(rows) {
         results.push({
             group_delivery_number: gdNum,
             posting_date: firstRow.posting_date || null,
-            plant_name: firstRow.plant_name || '',
+            plant_name: normalizePlantName(firstRow.plant_name),
             district: firstRow.sales_district_desc || '',
             region: firstRow.ship_to_region_desc || '',
             num_delivery_docs: new Set(gdRows.map(r => r.delivery_document)).size,
@@ -226,7 +239,7 @@ function groupIntoStructure(rows) {
         });
     }
 
-    return results;
+    return { results: results, mergedCount: mergedCount };
 }
 
 async function writeToSupabase(rawRows, grouped) {
@@ -250,12 +263,26 @@ async function writeToSupabase(rawRows, grouped) {
             status: 'available'
         }));
 
+        // Deduplicate by group_delivery_number (same GD may appear under multiple plant name spellings)
+        const seen = {};
+        const dedupedGDs = [];
+        let duplicateCount = 0;
+        gdRecords.forEach(function(r) {
+            if (seen[r.group_delivery_number]) {
+                duplicateCount++;
+                console.log('Duplicate GD merged:', r.group_delivery_number, '(appeared as', seen[r.group_delivery_number], 'and', r.plant_name + ')');
+                return;
+            }
+            seen[r.group_delivery_number] = r.plant_name;
+            dedupedGDs.push(r);
+        });
+
         // Delete existing and re-insert (clean slate)
         await sb.from('available_gds').delete().eq('plant_name', getWarehouseName());
 
         const { data: insertedGDs, error: gdErr } = await sb
             .from('available_gds')
-            .insert(gdRecords)
+            .insert(dedupedGDs)
             .select();
 
         if (gdErr) {
@@ -352,7 +379,7 @@ async function writeToSupabase(rawRows, grouped) {
 
         console.log('Inserted products:', totalProducts);
 
-        return { success: true, stops: totalStops, products: totalProducts };
+        return { success: true, stops: totalStops, products: totalProducts, duplicates: duplicateCount };
 
     } catch (err) {
         console.error('writeToSupabase error:', err);

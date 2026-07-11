@@ -34,7 +34,7 @@ async function loadVehicles() {
         '<td><strong>' + escapeHtml(v.vehicle_number) + '</strong></td>' +
         '<td>' + escapeHtml(v.driver_name || '-') + '</td>' +
         '<td>' + escapeHtml(v.driver_phone || '-') + '</td>' +
-        '<td>' + (v.capacity_kg ? v.capacity_kg + ' kg' : '-') + '</td>' +
+        '<td>' + (v.capacity_mt ? v.capacity_mt + ' MT' : '-') + '</td>' +
         '<td><span class="status-badge ' + (v.is_active ? 'status-completed' : 'status-pending') + '">' + (v.is_active ? 'Active' : 'Inactive') + '</span></td>' +
         '<td><span class="link-delete" onclick="deleteVehicle(\'' + v.id + '\')">Delete</span></td>' +
         '</tr>'
@@ -54,7 +54,7 @@ async function addVehicle() {
             vehicle_number: vehicle,
             driver_name: driver || null,
             driver_phone: phone || null,
-            capacity_kg: capacity ? Number(capacity) : null,
+            capacity_mt: capacity ? Number(capacity) : null,
             warehouse_code: getWarehouseCode()
         });
 
