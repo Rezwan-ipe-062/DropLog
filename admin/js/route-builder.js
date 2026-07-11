@@ -209,8 +209,10 @@ function applySearchFilter() {
         var match = false;
         var attrGd = card.getAttribute('data-gd') || card.getAttribute('data-gds') || '';
         var attrDo = card.getAttribute('data-do') || card.getAttribute('data-dos') || '';
+        var attrName = card.getAttribute('data-name') || card.getAttribute('data-names') || '';
         if (attrGd.toLowerCase().includes(q)) match = true;
         if (attrDo.toLowerCase().includes(q)) match = true;
+        if (attrName.toLowerCase().includes(q)) match = true;
         card.classList.toggle('hidden', !match);
         if (match) visibleCards++;
     });
@@ -329,9 +331,10 @@ function renderGDCard(gd) {
 
     const gdNum = escapeHtml(String(gd.group_delivery_number));
     const selectionClass = allSelected ? 'selected' : (partial ? 'partial' : '');
-    var doAttr = stops.map(function(s) { return s.delivery_document ? String(s.delivery_document) : ''; }).concat(stops.filter(function(s) { return s.delivery_documents; }).flatMap(function(s) { return s.delivery_documents.map(String); })).filter(Boolean).join(' ');
+    var doAttr = stops.map(function(s) { return s.delivery_document ? String(s.delivery_document) : ''; }).concat(stops.filter(function(s) { return s.delivery_documents && Array.isArray(s.delivery_documents); }).reduce(function(acc, s) { return acc.concat(s.delivery_documents.map(String)); }, [])).filter(Boolean).join(' ');
+    var nameAttr = stops.map(function(s) { return s.customer_name || ''; }).filter(Boolean).join(' ');
 
-    let html = '<div class="gd-card ' + selectionClass + (isMulti ? ' multi' : '') + '" data-gd="' + gdNum + '" data-do="' + escapeHtml(doAttr) + '" ';
+    let html = '<div class="gd-card ' + selectionClass + (isMulti ? ' multi' : '') + '" data-gd="' + gdNum + '" data-do="' + escapeHtml(doAttr) + '" data-name="' + escapeHtml(nameAttr) + '" ';
     html += 'onclick="toggleAllStopsForGD(\'' + gdNum.replace(/'/g, '\\\'') + '\')">';
 
     html += '<div class="gd-card-header">';
@@ -355,7 +358,7 @@ function renderGDCard(gd) {
             html += '<input type="checkbox" class="stop-checkbox" ' + (selectedStops.has(s.id) ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleStop(\'' + gdNum.replace(/'/g, '\\\'') + '\', \'' + s.id + '\')">';
             html += '<span class="stop-label">' + escapeHtml(String(s.customer_name || '?')) + '</span>';
             html += docLabel;
-            html += '<span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span>';
+            if (stops.length > 1) html += '<span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span>';
             html += '</div>';
         });
         html += '</div>';
@@ -373,9 +376,11 @@ function renderBundleCard(bundle, idx) {
     const allSelected = bundle.gds.every(g => g && isGDAllSelected(g));
     const totalGds = bundle.gds.length || 0;
     var bundleGdNums = bundle.gds.filter(Boolean).map(function(g) { return String(g.group_delivery_number); }).join(' ');
-    var bundleDoNums = bundle.gds.filter(Boolean).flatMap(function(g) { var s = getStopsForGD(g); return s ? s : []; }).map(function(s) { return s.delivery_document ? String(s.delivery_document) : ''; }).filter(Boolean).join(' ');
+    var bundleStops = bundle.gds.filter(Boolean).reduce(function(acc, g) { var s = getStopsForGD(g); return s ? acc.concat(s) : acc; }, []);
+    var bundleDoNums = bundleStops.map(function(s) { return s.delivery_document ? String(s.delivery_document) : ''; }).filter(Boolean).join(' ');
+    var bundleNames = bundleStops.map(function(s) { return s.customer_name || ''; }).filter(Boolean).join(' ');
 
-    let html = '<div class="bundle-card ' + (allSelected ? 'selected' : '') + '" data-gds="' + escapeHtml(bundleGdNums) + '" data-dos="' + escapeHtml(bundleDoNums) + '">';
+    let html = '<div class="bundle-card ' + (allSelected ? 'selected' : '') + '" data-gds="' + escapeHtml(bundleGdNums) + '" data-dos="' + escapeHtml(bundleDoNums) + '" data-names="' + escapeHtml(bundleNames) + '">';
     html += '<div class="bundle-header" onclick="toggleBundleSelection(' + idx + ')">';
     html += '<input type="checkbox" ' + (allSelected ? 'checked' : '') + ' class="gd-checkbox" onclick="event.stopPropagation(); toggleBundleSelection(' + idx + ')">';
     html += '<div class="bundle-header-info">';
@@ -408,7 +413,7 @@ function renderBundleCard(bundle, idx) {
                 if (!s) return;
                 html += '<label class="bundle-stop-check" onclick="event.stopPropagation();">';
                 html += '<input type="checkbox" ' + (selectedStops.has(s.id) ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleStop(\'' + gdNumEsc.replace(/'/g, '\\\'') + '\', \'' + s.id + '\')">';
-                html += '<span>' + escapeHtml(String(s.customer_name || '?')) + ' <span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span></span>';
+                html += '<span>' + escapeHtml(String(s.customer_name || '?')) + (stops.length > 1 ? ' <span class="qty-badge">' + Math.round(s.total_quantity || 0) + '</span>' : '') + '</span>';
                 html += '</label>';
             });
             html += '</div>';
