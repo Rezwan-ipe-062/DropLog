@@ -83,16 +83,12 @@ function readFileAsArrayBuffer(file) {
 // Convert Excel serial number to ISO date string (YYYY-MM-DD)
 function excelDateToISO(value) {
     if (!value) return null;
-    // Already a string date
-    if (typeof value === 'string' && value.includes('-')) return value;
-    // Excel serial number
     if (typeof value === 'number') {
-        const epoch = new Date(1899, 11, 30); // Excel epoch: Dec 30, 1899
-        const date = new Date(epoch.getTime() + value * 86400000);
+        var epoch = new Date(1899, 11, 30);
+        var date = new Date(epoch.getTime() + value * 86400000);
         return date.toISOString().slice(0, 10);
     }
-    // Try parsing as date
-    const d = new Date(value);
+    var d = new Date(value);
     if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
     return null;
 }
@@ -159,7 +155,7 @@ function mapColumns(rows) {
         mapped.group_delivery_number = String(mapped.group_delivery_number || '').trim();
         mapped.delivery_document = String(mapped.delivery_document || '').trim();
         mapped.bill_to_party_id = String(mapped.bill_to_party_id || '').trim();
-        mapped.delivered_quantity = Number(mapped.delivered_quantity) || 0;
+        mapped.delivered_quantity = Number(String(mapped.delivered_quantity || '0').replace(/,/g, '')) || 0;
         mapped._raw_plant_name = String(mapped.plant_name || '').trim();
         mapped.plant_name = normalizePlantName(mapped.plant_name);
         // Convert date fields from Excel serial numbers
@@ -277,8 +273,7 @@ async function writeToSupabase(rawRows, grouped) {
             dedupedGDs.push(r);
         });
 
-        // Delete existing and re-insert (clean slate)
-        await sb.from('available_gds').delete().eq('plant_name', getWarehouseName());
+        await sb.from('available_gds').delete().eq('plant_name', getWarehouseName()).eq('status', 'available');
 
         const { data: insertedGDs, error: gdErr } = await sb
             .from('available_gds')
@@ -298,16 +293,16 @@ async function writeToSupabase(rawRows, grouped) {
 
         // 3. Insert all stops
         const allStopRecords = [];
-        const stopToProducts = {}; // temp index to link products after stop insert
+        const stopKeyToProducts = {};
 
-        let stopIdx = 0;
         for (const gd of grouped) {
             const gdId = gdLookup[gd.group_delivery_number];
             if (!gdId) { console.warn('No ID for GD:', gd.group_delivery_number); continue; }
 
             for (const stop of gd.stops) {
+                var stopKey = gd.group_delivery_number + '||' + (stop.customer_id || stop.customer_name);
                 allStopRecords.push({
-                    _idx: stopIdx,  // temp field, won't be sent to DB
+                    _key: stopKey,
                     gd_id: gdId,
                     group_delivery_number: gd.group_delivery_number,
                     customer_id: stop.customer_id,
@@ -319,13 +314,11 @@ async function writeToSupabase(rawRows, grouped) {
                     total_quantity: stop.total_quantity,
                     num_products: stop.num_products
                 });
-                stopToProducts[stopIdx] = stop.products;
-                stopIdx++;
+                stopKeyToProducts[stopKey] = stop.products;
             }
         }
 
-        // Remove _idx before sending to DB, insert in batches
-        const stopRecordsClean = allStopRecords.map(({ _idx, ...rest }) => rest);
+        const stopRecordsClean = allStopRecords.map(({ _key, ...rest }) => rest);
 
         let insertedStops = [];
         for (let i = 0; i < stopRecordsClean.length; i += 100) {
@@ -345,12 +338,12 @@ async function writeToSupabase(rawRows, grouped) {
         totalStops = insertedStops.length;
         console.log('Inserted stops:', totalStops);
 
-        // 4. Insert products - match by order (stops inserted in same order)
         const allProductRecords = [];
 
         for (let i = 0; i < insertedStops.length; i++) {
             const stopId = insertedStops[i].id;
-            const products = stopToProducts[i] || [];
+            var sKey = insertedStops[i].group_delivery_number + '||' + (insertedStops[i].customer_id || '');
+            const products = stopKeyToProducts[sKey] || [];
 
             products.forEach(p => {
                 allProductRecords.push({
