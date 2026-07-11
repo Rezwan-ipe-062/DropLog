@@ -1,17 +1,5 @@
 [project]
-ref = "afovfoaraolalebvookx"
-name = "droplog"
-
-[api]
-enabled = true
-port = 54321
-
-[db.migrations]
-directory = "./supabase"
-
-[functions]
-enabled = true
-include = ["send-eta", "delivery-notify"]
+id = "afovfoaraolalebvookx"
 
 [functions.send-eta]
 verify_jwt = false
