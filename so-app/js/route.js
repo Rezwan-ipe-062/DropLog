@@ -126,7 +126,7 @@ async function handleStartRoute() {
             .from('routes')
             .select('*')
             .eq('route_code', code)
-            .eq('warehouse', currentUser.warehouse)
+            .eq('plant_name', currentUser.warehouse)
             .single();
 
         if (error || !route) {
@@ -193,6 +193,15 @@ function renderStartScreen() {
     document.getElementById('startVendor').textContent = routeData.vendor_name || '--';
     document.getElementById('startDistrict').textContent = routeData.district || '--';
     document.getElementById('startStopCount').textContent = stopsData.length + ' stops';
+
+    // Auto-fill vehicle capacity from fleet registry
+    if (routeData.vehicle_number && sb) {
+        sb.from('fleet_vehicles').select('capacity_kg').eq('vehicle_number', routeData.vehicle_number).maybeSingle().then(function(res) {
+            if (res.data && res.data.capacity_kg) {
+                document.getElementById('startVehicleCapacity').value = (res.data.capacity_kg / 1000).toFixed(1);
+            }
+        }).catch(function() {});
+    }
 
     // Show customer list preview
     var preview = stopsData.map(function(s, i) { 

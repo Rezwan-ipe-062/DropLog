@@ -100,19 +100,23 @@ async function handlePartial() {
     try {
         if (currentStopIndex === null || isProcessing) return;
         const stop = stopsData[currentStopIndex];
+        const partialQty = document.getElementById('partialQty').value.trim();
+        const remark = document.getElementById('deliveryRemark').value.trim();
         if (!confirm('Mark ' + stop.customer_name + ' as partial?')) { isProcessing = false; return; }
         isProcessing = true;
 
         const gps = await getGPS();
         const now = new Date().toISOString();
-        const remark = document.getElementById('deliveryRemark').value.trim();
+        var partialRemark = 'Partial delivery';
+        if (partialQty) partialRemark += ' - ' + partialQty + ' units delivered';
+        if (remark) partialRemark += ' (' + remark + ')';
 
         var { error: stopErr } = await sb.from('route_stops').update({
             status: 'partial',
             delivered_at: now,
             gps_lat: gps.lat,
             gps_lng: gps.lng,
-            remark: remark || 'Partial delivery'
+            remark: partialRemark
         }).eq('id', stop.id);
         if (stopErr) {
             showToast('Save failed', 'error');
@@ -126,7 +130,7 @@ async function handlePartial() {
             event_type: 'delivery_partial',
             gps_lat: gps.lat,
             gps_lng: gps.lng,
-            remark: remark || 'Partial delivery',
+            remark: partialRemark,
             performed_by: currentUser ? currentUser.id : null
         });
         if (evErr) console.error('event insert failed:', evErr);
@@ -141,6 +145,7 @@ async function handlePartial() {
         stop.delivered_at = now;
 
         showToast(stop.customer_name + ' - partial', 'warning');
+        document.getElementById('partialQty').value = '';
         renderStopList();
         showScreen('screenStops');
         isProcessing = false;
