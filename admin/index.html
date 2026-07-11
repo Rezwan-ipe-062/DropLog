@@ -72,10 +72,6 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Supply Officers
         </button>
-        <button class="nav-tab" onclick="switchTab('search')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Search
-        </button>
         <button class="nav-tab" onclick="switchTab('fleet')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"/><path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9"/><path d="M12 3v6"/></svg>
             Fleet
@@ -210,19 +206,6 @@
         </div>
 
         <!-- Search Panel -->
-        <div class="panel" id="panel-search">
-            <div class="card">
-                <h3>Search</h3>
-                <input type="text" class="search-input" placeholder="Search by GD number, customer name, DO, location..." oninput="handleSearch(this.value)">
-                <div class="search-filters" id="searchFilters">
-                    <span class="sf-chip active" data-filter="all" onclick="setSearchFilter('all')">All</span>
-                    <span class="sf-chip" data-filter="stops" onclick="setSearchFilter('stops')">Customers</span>
-                    <span class="sf-chip" data-filter="gds" onclick="setSearchFilter('gds')">GDs</span>
-                </div>
-                <div id="searchResults"></div>
-            </div>
-        </div>
-
         <!-- Fleet Panel -->
         <div class="panel" id="panel-fleet">
             <div class="card">
@@ -299,7 +282,6 @@
 <script src="js/dashboard.js"></script>
 <script src="js/contacts.js"></script>
 <script src="js/users.js"></script>
-<script src="js/search.js"></script>
 <script src="js/notifications.js"></script>
 <script src="js/fleet.js"></script>
 <script src="js/vendors.js"></script>
