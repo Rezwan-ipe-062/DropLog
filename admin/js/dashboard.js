@@ -342,8 +342,9 @@ async function deleteRoute(routeId) {
 
 // ---- Route Detail View ----
 async function viewRouteDetail(routeId) {
+    console.log('viewRouteDetail called with:', routeId);
     try {
-        if (!sb) return;
+        if (!sb) { showToast('Supabase not initialized', 'error'); return; }
 
         const { data: route } = await sb.from('routes').select('*').eq('id', routeId).single();
         if (!route) { showToast('Route not found', 'error'); return; }
