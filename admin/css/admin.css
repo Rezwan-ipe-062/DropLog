@@ -186,7 +186,7 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
 .stat-card.orange .stat-value { color: var(--orange); }
 
 /* Route Detail Map */
-.rd-map-wrap { margin-top: 12px; display: none; }
+.rd-map-wrap { margin-top: 12px; }
 .rd-map { height: 340px; border-radius: 8px; overflow: hidden; border: 1px solid var(--gray-200); }
 .btn-show-map { padding: 6px 14px; background: var(--syn-blue); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .btn-show-map:hover { background: var(--syn-blue-dark); }
@@ -383,6 +383,8 @@ body, .header, .card, .nav-tab, input, select, textarea, table th, td, .toast, .
     border-radius: var(--radius);
     border: 1.5px solid var(--syn-blue);
     box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
 }
 .rb-form-close {
     position: absolute;

@@ -347,11 +347,18 @@ async function viewRouteDetail(routeId) {
     try {
         if (!sb) { showToast('Supabase not initialized', 'error'); return; }
 
-        const { data: route } = await sb.from('routes').select('*').eq('id', routeId).single();
-        if (!route) { showToast('Route not found', 'error'); return; }
+        console.log('viewRouteDetail: fetching route', routeId);
+        const { data: route, error: routeErr } = await sb.from('routes').select('*').eq('id', routeId).single();
+        if (routeErr) { console.error('viewRouteDetail route query error:', routeErr); showToast('Error loading route', 'error'); return; }
+        if (!route) { console.error('viewRouteDetail: route not found', routeId); showToast('Route not found', 'error'); return; }
 
-        const { data: stops } = await sb.from('route_stops').select('*').eq('route_id', routeId).order('stop_sequence');
-        const { data: issues } = await sb.from('issues').select('*').eq('route_id', routeId).order('reported_at', { ascending: false });
+        console.log('viewRouteDetail: route found, fetching stops');
+        const { data: stops, error: stopsErr } = await sb.from('route_stops').select('*').eq('route_id', routeId).order('stop_sequence');
+        if (stopsErr) { console.error('viewRouteDetail stops query error:', stopsErr); }
+
+        console.log('viewRouteDetail: fetching issues');
+        const { data: issues, error: issuesErr } = await sb.from('issues').select('*').eq('route_id', routeId).order('reported_at', { ascending: false });
+        if (issuesErr) { console.error('viewRouteDetail issues query error:', issuesErr); }
 
         let soName = '--';
         if (route.assigned_so_id) {
