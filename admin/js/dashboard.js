@@ -1,4 +1,4 @@
-let dashboardPolling = null;
+﻿let dashboardPolling = null;
 let _activeFilter = null;
 
 async function loadDashboard() {
@@ -342,114 +342,119 @@ async function deleteRoute(routeId) {
 
 // ---- Route Detail View ----
 async function viewRouteDetail(routeId) {
-    if (!sb) return;
+    try {
+        if (!sb) return;
 
-    const { data: route } = await sb.from('routes').select('*').eq('id', routeId).single();
-    if (!route) { showToast('Route not found', 'error'); return; }
+        const { data: route } = await sb.from('routes').select('*').eq('id', routeId).single();
+        if (!route) { showToast('Route not found', 'error'); return; }
 
-    const { data: stops } = await sb.from('route_stops').select('*').eq('route_id', routeId).order('stop_sequence');
-    const { data: issues } = await sb.from('issues').select('*').eq('route_id', routeId).order('reported_at', { ascending: false });
+        const { data: stops } = await sb.from('route_stops').select('*').eq('route_id', routeId).order('stop_sequence');
+        const { data: issues } = await sb.from('issues').select('*').eq('route_id', routeId).order('reported_at', { ascending: false });
 
-    let soName = '--';
-    if (route.assigned_so_id) {
-        const { data: so } = await sb.from('users').select('name').eq('id', route.assigned_so_id).single();
-        if (so) soName = so.name;
-    }
+        let soName = '--';
+        if (route.assigned_so_id) {
+            const { data: so } = await sb.from('users').select('name').eq('id', route.assigned_so_id).single();
+            if (so) soName = so.name;
+        }
 
-    let html = '<div class="route-detail-overlay" id="routeDetailOverlay">';
-    html += '<div class="route-detail-panel">';
-    html += '<div class="rd-header">';
-    html += '<h2>' + (route.route_name || route.route_code) + '</h2>';
-    html += '<button class="rd-close" onclick="closeRouteDetail()">X</button>';
-    html += '</div>';
-
-    var statusClass = route.status === 'completed' ? 'status-completed' : route.status === 'in_transit' ? 'status-transit' : 'status-pending';
-    html += '<div class="flex-center-gap">';
-    html += '<span class="status-badge ' + statusClass + '">' + route.status + '</span>';
-    if (route.status === 'completed') {
-        html += '<button class="btn-download-report" onclick="event.stopPropagation(); generateRouteReport(\'' + route.id + '\')">Download Route Report</button>';
-    }
-    html += '<button class="btn-download-report" onclick="event.stopPropagation(); exportDeliveries(\'' + route.id + '\')">Export to Excel</button>';
-    html += '</div>';
-
-    html += '<div class="rd-info-grid">';
-    html += '<div class="rd-info-item"><span class="rd-label">Route Code</span><span class="rd-value">' + route.route_code + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">District</span><span class="rd-value">' + (route.district || '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Vehicle</span><span class="rd-value">' + (route.vehicle_number || '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Vendor</span><span class="rd-value">' + (route.vendor_name || '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Supply Officer</span><span class="rd-value">' + soName + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Dispatch Date</span><span class="rd-value">' + formatDate(route.dispatch_date) + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Started</span><span class="rd-value">' + (route.started_at ? formatTime(route.started_at) + ' ' + formatDate(route.started_at) : '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Completed</span><span class="rd-value">' + (route.completed_at ? formatTime(route.completed_at) + ' ' + formatDate(route.completed_at) : '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Total Stops</span><span class="rd-value">' + route.total_stops + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Delivered</span><span class="rd-value rd-green">' + (route.completed_stops || 0) + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Failed</span><span class="rd-value rd-red">' + (route.failed_stops || 0) + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Expense (BDT)</span><span class="rd-value">' + (route.so_travelling_expense ? Number(route.so_travelling_expense).toLocaleString() : '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">Sales Value (BDT)</span><span class="rd-value">' + (route.sales_value ? Number(route.sales_value).toLocaleString() : '--') + '</span></div>';
-    html += '<div class="rd-info-item"><span class="rd-label">GPS Distance</span><span class="rd-value">' + (route.total_distance_km ? route.total_distance_km + ' km' : 'Pending') + '</span></div>';
-    html += '</div>';
-
-    if (route.status === 'completed') {
-        html += '<div class="rd-section-title">Cost Edit (CSO)</div>';
-        html += '<div class="rd-cost-edit">';
-        html += '<div class="form-row">';
-        html += '<div class="form-group"><label>Route Sales Value (BDT)</label><input type="number" id="editSalesValue" value="' + (route.sales_value || '') + '" class="input input-full"></div>';
-        html += '<div class="form-group"><label>Carrying Cost (BDT)</label><input type="number" id="editCarryingCost" value="' + (route.carrying_cost || '') + '" class="input input-full"></div>';
-        html += '<div class="form-group"><label>Loading/Unloading Cost (BDT)</label><input type="number" id="editLoadingCost" value="' + (route.loading_unloading_cost || '') + '" class="input input-full"></div>';
+        let html = '<div class="route-detail-overlay" id="routeDetailOverlay">';
+        html += '<div class="route-detail-panel">';
+        html += '<div class="rd-header">';
+        html += '<h2>' + escapeHtml(route.route_name || route.route_code) + '</h2>';
+        html += '<button class="rd-close" onclick="closeRouteDetail()">X</button>';
         html += '</div>';
-        html += '<button class="btn-create-route" onclick="saveRouteCosts(\'' + route.id + '\')">Save Cost Changes</button>';
+
+        var statusClass = route.status === 'completed' ? 'status-completed' : route.status === 'in_transit' ? 'status-transit' : 'status-pending';
+        html += '<div class="flex-center-gap">';
+        html += '<span class="status-badge ' + statusClass + '">' + route.status + '</span>';
+        if (route.status === 'completed') {
+            html += '<button class="btn-download-report" onclick="event.stopPropagation(); generateRouteReport(\'' + route.id + '\')">Download Route Report</button>';
+        }
+        html += '<button class="btn-download-report" onclick="event.stopPropagation(); exportDeliveries(\'' + route.id + '\')">Export to Excel</button>';
         html += '</div>';
-    }
 
-    html += '<h3 class="rd-section-title">Delivery Stops</h3>';
-    html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Confirmed</th><th>Customer Reply</th><th>Time</th></tr></thead><tbody>';
-    (stops || []).forEach(function(stop) {
-        var rowClass = stop.status === 'failed' ? 'rd-row-failed' : stop.status === 'partial' ? 'rd-row-partial' : stop.status === 'delivered' ? 'rd-row-done' : '';
-        if (stop.delivery_exception) rowClass += ' rd-row-failed';
-        var statusBadge = stop.status === 'delivered' ? '<span class="rd-badge rd-badge-green">Delivered</span>' :
-                         stop.status === 'partial' ? '<span class="rd-badge rd-badge-orange">Partial</span>' :
-                         stop.status === 'failed' ? '<span class="rd-badge rd-badge-red">Failed</span>' :
-                         '<span class="rd-badge rd-badge-gray">Pending</span>';
-        var confirmedBadge = stop.customer_confirmed_at
-            ? '<span class="rd-badge rd-badge-green" title="' + formatTime(stop.customer_confirmed_at) + ' ' + formatDate(stop.customer_confirmed_at) + '">Yes</span>'
-            : '<span class="rd-badge rd-badge-gray">--</span>';
-        var respText = '--';
-        if (stop.customer_response === 'confirmed_received') respText = '<span class="rd-badge rd-badge-green">Yes, received</span>';
-        else if (stop.customer_response === 'not_received') respText = '<span class="rd-badge rd-badge-red">No, not received</span>';
-        html += '<tr class="' + rowClass + '">';
-        html += '<td>' + stop.stop_sequence + '</td>';
-        html += '<td><strong>' + stop.customer_name + '</strong></td>';
-        html += '<td>' + (stop.address || '--').substring(0, 30) + '</td>';
-        html += '<td>' + statusBadge + '</td>';
-        html += '<td>' + confirmedBadge + '</td>';
-        html += '<td>' + respText + '</td>';
-        html += '<td>' + (stop.delivered_at ? formatTime(stop.delivered_at) : '--') + '</td>';
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
+        html += '<div class="rd-info-grid">';
+        html += '<div class="rd-info-item"><span class="rd-label">Route Code</span><span class="rd-value">' + escapeHtml(route.route_code) + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">District</span><span class="rd-value">' + (route.district || '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Vehicle</span><span class="rd-value">' + (route.vehicle_number || '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Vendor</span><span class="rd-value">' + (route.vendor_name || '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Supply Officer</span><span class="rd-value">' + soName + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Dispatch Date</span><span class="rd-value">' + formatDate(route.dispatch_date) + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Started</span><span class="rd-value">' + (route.started_at ? formatTime(route.started_at) + ' ' + formatDate(route.started_at) : '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Completed</span><span class="rd-value">' + (route.completed_at ? formatTime(route.completed_at) + ' ' + formatDate(route.completed_at) : '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Total Stops</span><span class="rd-value">' + route.total_stops + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Delivered</span><span class="rd-value rd-green">' + (route.completed_stops || 0) + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Failed</span><span class="rd-value rd-red">' + (route.failed_stops || 0) + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Expense (BDT)</span><span class="rd-value">' + (route.so_travelling_expense ? Number(route.so_travelling_expense).toLocaleString() : '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">Sales Value (BDT)</span><span class="rd-value">' + (route.sales_value ? Number(route.sales_value).toLocaleString() : '--') + '</span></div>';
+        html += '<div class="rd-info-item"><span class="rd-label">GPS Distance</span><span class="rd-value">' + (route.total_distance_km ? route.total_distance_km + ' km' : 'Pending') + '</span></div>';
+        html += '</div>';
 
-    if (issues && issues.length > 0) {
-        html += '<h3 class="rd-section-title rd-issues-title">Issues Reported</h3>';
-        issues.forEach(function(issue) {
-            html += '<div class="rd-issue-card">';
-            html += '<strong>' + issue.issue_type + '</strong>';
-            if (issue.details) html += '<p>' + issue.details + '</p>';
-            html += '<span class="rd-issue-time">' + formatTime(issue.reported_at) + ' ' + formatDate(issue.reported_at) + '</span>';
+        if (route.status === 'completed') {
+            html += '<div class="rd-section-title">Cost Edit (CSO)</div>';
+            html += '<div class="rd-cost-edit">';
+            html += '<div class="form-row">';
+            html += '<div class="form-group"><label>Route Sales Value (BDT)</label><input type="number" id="editSalesValue" value="' + (route.sales_value || '') + '" class="input input-full"></div>';
+            html += '<div class="form-group"><label>Carrying Cost (BDT)</label><input type="number" id="editCarryingCost" value="' + (route.carrying_cost || '') + '" class="input input-full"></div>';
+            html += '<div class="form-group"><label>Loading/Unloading Cost (BDT)</label><input type="number" id="editLoadingCost" value="' + (route.loading_unloading_cost || '') + '" class="input input-full"></div>';
             html += '</div>';
+            html += '<button class="btn-create-route" onclick="saveRouteCosts(\'' + route.id + '\')">Save Cost Changes</button>';
+            html += '</div>';
+        }
+
+        html += '<h3 class="rd-section-title">Delivery Stops</h3>';
+        html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Confirmed</th><th>Customer Reply</th><th>Time</th></tr></thead><tbody>';
+        (stops || []).forEach(function(stop) {
+            var rowClass = stop.status === 'failed' ? 'rd-row-failed' : stop.status === 'partial' ? 'rd-row-partial' : stop.status === 'delivered' ? 'rd-row-done' : '';
+            if (stop.delivery_exception) rowClass += ' rd-row-failed';
+            var statusBadge = stop.status === 'delivered' ? '<span class="rd-badge rd-badge-green">Delivered</span>' :
+                             stop.status === 'partial' ? '<span class="rd-badge rd-badge-orange">Partial</span>' :
+                             stop.status === 'failed' ? '<span class="rd-badge rd-badge-red">Failed</span>' :
+                             '<span class="rd-badge rd-badge-gray">Pending</span>';
+            var confirmedBadge = stop.customer_confirmed_at
+                ? '<span class="rd-badge rd-badge-green" title="' + formatTime(stop.customer_confirmed_at) + ' ' + formatDate(stop.customer_confirmed_at) + '">Yes</span>'
+                : '<span class="rd-badge rd-badge-gray">--</span>';
+            var respText = '--';
+            if (stop.customer_response === 'confirmed_received') respText = '<span class="rd-badge rd-badge-green">Yes, received</span>';
+            else if (stop.customer_response === 'not_received') respText = '<span class="rd-badge rd-badge-red">No, not received</span>';
+            html += '<tr class="' + rowClass + '">';
+            html += '<td>' + stop.stop_sequence + '</td>';
+            html += '<td><strong>' + escapeHtml(stop.customer_name) + '</strong></td>';
+            html += '<td>' + escapeHtml(stop.address || '--').substring(0, 30) + '</td>';
+            html += '<td>' + statusBadge + '</td>';
+            html += '<td>' + confirmedBadge + '</td>';
+            html += '<td>' + respText + '</td>';
+            html += '<td>' + (stop.delivered_at ? formatTime(stop.delivered_at) : '--') + '</td>';
+            html += '</tr>';
         });
+        html += '</tbody></table>';
+
+        if (issues && issues.length > 0) {
+            html += '<h3 class="rd-section-title rd-issues-title">Issues Reported</h3>';
+            issues.forEach(function(issue) {
+                html += '<div class="rd-issue-card">';
+                html += '<strong>' + escapeHtml(issue.issue_type) + '</strong>';
+                if (issue.details) html += '<p>' + escapeHtml(issue.details) + '</p>';
+                html += '<span class="rd-issue-time">' + formatTime(issue.reported_at) + ' ' + formatDate(issue.reported_at) + '</span>';
+                html += '</div>';
+            });
+        }
+
+        html += '<div class="rd-section-title flex-between">';
+        html += '<span>Delivery Map</span>';
+        html += '<button class="btn-show-map" id="btnToggleMap" onclick="toggleRouteMap(\'' + routeId + '\')">Show Map</button>';
+        html += '</div>';
+        html += '<div id="routeDetailMapWrap" class="rd-map-wrap display-none"><div id="routeDetailMap" class="rd-map"></div></div>';
+
+        html += '</div></div>';
+
+        var existing = document.getElementById('routeDetailOverlay');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', html);
+    } catch (e) {
+        console.error('viewRouteDetail:', e);
+        showToast(e.message || 'Failed to open route details', 'error');
     }
-
-    html += '<div class="rd-section-title flex-between">';
-    html += '<span>Delivery Map</span>';
-    html += '<button class="btn-show-map" id="btnToggleMap" onclick="toggleRouteMap(\'' + routeId + '\')">Show Map</button>';
-    html += '</div>';
-    html += '<div id="routeDetailMapWrap" class="rd-map-wrap display-none"><div id="routeDetailMap" class="rd-map"></div></div>';
-
-    html += '</div></div>';
-
-    var existing = document.getElementById('routeDetailOverlay');
-    if (existing) existing.remove();
-    document.body.insertAdjacentHTML('beforeend', html);
 }
 
 async function saveRouteCosts(routeId) {
