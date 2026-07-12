@@ -108,6 +108,7 @@ async function loadRecentRoutes(filterStatus) {
         }
 
         const { data } = await query;
+        console.log('loadRecentRoutes called, results:', data ? data.length : 0);
 
         const tbody = document.getElementById('recentRoutesBody');
         const filterLabel = document.getElementById('filterLabel');
@@ -131,7 +132,7 @@ async function loadRecentRoutes(filterStatus) {
         tbody.innerHTML = data.map(r => {
             const statusClass = r.status === 'completed' ? 'status-completed' : 
                                r.status === 'in_transit' ? 'status-transit' : 'status-pending';
-            return '<tr class="cursor-pointer" onclick="viewRouteDetail(\'' + r.id + '\")">' +
+            return '<tr class="cursor-pointer" data-route-id="' + r.id + '">' +
                 '<td><strong>' + escapeHtml(r.route_code) + '</strong></td>' +
                 '<td>' + escapeHtml(r.route_name || '-') + '</td>' +
                 '<td>' + escapeHtml(r.district || '-') + '</td>' +
@@ -563,3 +564,17 @@ function closeRouteDetail() {
     var overlay = document.getElementById('routeDetailOverlay');
     if (overlay) overlay.remove();
 }
+
+// ---- Delegated Click Handlers ----
+document.addEventListener('DOMContentLoaded', function() {
+    var recentBody = document.getElementById('recentRoutesBody');
+    if (recentBody) {
+        recentBody.addEventListener('click', function(e) {
+            var tr = e.target.closest('tr[data-route-id]');
+            if (tr) {
+                e.stopPropagation();
+                viewRouteDetail(tr.getAttribute('data-route-id'));
+            }
+        });
+    }
+});
