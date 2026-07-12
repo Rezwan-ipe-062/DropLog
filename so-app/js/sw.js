@@ -1,19 +1,19 @@
 // ============================================================
 // DropLog Service Worker - Offline Support
 // ============================================================
-const CACHE_NAME = 'droplog-v5';
+const CACHE_NAME = 'droplog-v7';
 const urlsToCache = [
     '.',
-    'index.html',
-    'css/so.css',
-    'js/config.js',
-    'js/db.js',
-    'js/auth.js',
-    'js/gps.js',
-    'js/route.js',
-    'js/delivery.js',
-    'js/issue.js',
-    'js/complete.js',
+    'index.html?v=7',
+    'css/so.css?v=7',
+    'js/config.js?v=7',
+    'js/db.js?v=7',
+    'js/auth.js?v=7',
+    'js/gps.js?v=7',
+    'js/route.js?v=7',
+    'js/delivery.js?v=7',
+    'js/issue.js?v=7',
+    'js/complete.js?v=7',
     'icon-192.png'
 ];
 
