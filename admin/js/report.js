@@ -306,42 +306,56 @@ async function generateRouteReport(routeId) {
     doc.setFont('helvetica', 'bold');
     doc.text('#', tableX + 2, y + 4.2);
     doc.text('Customer', tableX + 10, y + 4.2);
-    doc.text('Location', tableX + 48, y + 4.2);
-    doc.text('Status', tableX + 90, y + 4.2);
-    doc.text('Time', tableX + 112, y + 4.2);
-    doc.text('WA', tableX + 132, y + 4.2);
-    doc.text('Customer Reply', tableX + 146, y + 4.2);
-    doc.text('Exception', tableX + 178, y + 4.2);
+    doc.text('GPS', tableX + 48, y + 4.2);
+    doc.text('Status', tableX + 80, y + 4.2);
+    doc.text('Remark', tableX + 104, y + 4.2);
+    doc.text('Reply', tableX + 142, y + 4.2);
+    doc.text('Time', tableX + 172, y + 4.2);
     y += 7;
 
     // Table rows
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
 
     stops.forEach(function(stop, i) {
         if (y > 260) { doc.addPage(); y = M; }
 
-        // Alternate row bg
-        if (i % 2 === 0) {
-            doc.setFillColor(250, 250, 252);
-            doc.rect(tableX, y - 3, tableW, 5.5, 'F');
-        }
+        // Row bg: exception > failed > zebra
+        var rowBg = i % 2 === 0 ? [250, 250, 252] : [255, 255, 255];
+        if (stop.delivery_exception) rowBg = [255, 247, 237];
+        else if (stop.status === 'failed') rowBg = [254, 242, 242];
+        doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
+        doc.rect(tableX, y - 3, tableW, 5.5, 'F');
 
-        // Failed row highlight
-        if (stop.status === 'failed') {
-            doc.setFillColor(254, 242, 242);
-            doc.rect(tableX, y - 3, tableW, 5.5, 'F');
+        // Exception marker
+        if (stop.delivery_exception) {
+            doc.setTextColor(red[0], red[1], red[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7);
+            doc.text('!', tableX + 1, y);
         }
+        doc.setFontSize(6.5);
 
         doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-        doc.text(String(i + 1), tableX + 2, y);
+        doc.text(String(i + 1), tableX + 4, y);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
-        doc.text(stop.customer_name.substring(0, 18), tableX + 10, y);
+        doc.text(stop.customer_name.substring(0, 16), tableX + 10, y);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-        doc.text((stop.address || '').substring(0, 18), tableX + 48, y);
+
+        // GPS
+        var gpsStr = '--';
+        var hasGps = stop.gps_lat && stop.gps_lng;
+        if (hasGps) {
+            gpsStr = Number(stop.gps_lat).toFixed(4) + ', ' + Number(stop.gps_lng).toFixed(4);
+        } else if (stop.gps_lat || stop.gps_lng) {
+            gpsStr = (stop.gps_lat ? Number(stop.gps_lat).toFixed(4) : '--') + ', ' + (stop.gps_lng ? Number(stop.gps_lng).toFixed(4) : '--');
+        }
+        doc.setTextColor(hasGps ? synGreen[0] : grayDark[0], hasGps ? synGreen[1] : grayDark[1], hasGps ? synGreen[2] : grayDark[2]);
+        doc.setFontSize(5.5);
+        doc.text(gpsStr, tableX + 48, y + 1);
+        doc.setFontSize(6.5);
 
         // Status with color
         if (stop.status === 'delivered') { doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]); }
@@ -349,42 +363,61 @@ async function generateRouteReport(routeId) {
         else if (stop.status === 'partial') { doc.setTextColor(230, 81, 0); }
         else { doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]); }
         doc.setFont('helvetica', 'bold');
-        doc.text((stop.status || 'pending').toUpperCase(), tableX + 90, y);
+        doc.text((stop.status || 'pending').toUpperCase(), tableX + 80, y);
 
-        doc.setTextColor(0, 0, 0);
+        // Remark
         doc.setFont('helvetica', 'normal');
-        doc.text(stop.delivered_at ? fTime(stop.delivered_at) : '--', tableX + 112, y);
-
-        // WhatsApp status
-        var waStatus = stop.whatsapp_confirm_status || 'not_sent';
-        var waColor = waStatus === 'sent' ? synGreen : waStatus === 'failed' ? red : grayDark;
-        doc.setTextColor(waColor[0], waColor[1], waColor[2]);
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        var remarkStr = stop.remark ? stop.remark.substring(0, 22) : '--';
+        if (stop.remark && stop.remark.length > 22) remarkStr += '...';
         doc.setFontSize(5.5);
-        doc.text(waStatus === 'not_sent' ? '--' : waStatus.toUpperCase(), tableX + 132, y);
-        doc.setFontSize(7);
+        doc.text(remarkStr, tableX + 104, y + 1);
+        doc.setFontSize(6.5);
 
         // Customer response
         var resp = stop.customer_response || 'no_response';
-        var respLabel = resp === 'confirmed_received' ? 'Yes, received' : resp === 'not_received' ? 'No, not received' : '--';
+        var respLabel = resp === 'confirmed_received' ? 'Received' : resp === 'not_received' ? 'Not Recvd' : '--';
         var respColor = resp === 'confirmed_received' ? synGreen : resp === 'not_received' ? red : grayDark;
         doc.setTextColor(respColor[0], respColor[1], respColor[2]);
-        doc.text(respLabel.substring(0, 16), tableX + 146, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text(respLabel, tableX + 142, y + 0.5);
 
-        // Exception flag
-        if (stop.delivery_exception) {
-            doc.setTextColor(red[0], red[1], red[2]);
-            doc.setFont('helvetica', 'bold');
-            doc.text('FLAG', tableX + 178, y);
-        } else {
-            doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-            doc.text('--', tableX + 178, y);
-        }
+        // Time
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
+        doc.text(stop.delivered_at ? fTime(stop.delivered_at) : '--', tableX + 172, y);
 
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'normal');
 
         y += 5.5;
     });
+
+    // --- Customer Feedback Summary ---
+    y += 6;
+    if (y > 255) { doc.addPage(); y = M; }
+
+    var confirmedCount = stops.filter(function(s) { return s.customer_response === 'confirmed_received'; }).length;
+    var notReceivedCount = stops.filter(function(s) { return s.customer_response === 'not_received'; }).length;
+    var noResponseCount = stops.filter(function(s) { return !s.customer_response || s.customer_response === 'no_response'; }).length;
+
+    doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
+    doc.roundedRect(tableX, y, tableW, 14, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Customer Feedback Summary', tableX + 4, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+
+    var fbW = tableW / 3;
+    doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
+    doc.text('Confirmed Received: ' + confirmedCount, tableX + 4, y + 10);
+    doc.setTextColor(red[0], red[1], red[2]);
+    doc.text('Not Received: ' + notReceivedCount, tableX + fbW + 4, y + 10);
+    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+    doc.text('No Response: ' + noResponseCount, tableX + 2*fbW + 4, y + 10);
+    y += 18;
 
     // --- Issues Section ---
     if (issues.length > 0) {
@@ -418,8 +451,9 @@ async function generateRouteReport(routeId) {
     y += 10;
     if (y > 240) { doc.addPage(); y = M; }
 
+    var perfBoxH = 48;
     doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
-    doc.roundedRect(tableX, y, tableW, 30, 2, 2, 'F');
+    doc.roundedRect(tableX, y, tableW, perfBoxH, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text('Route Performance', tableX + 4, y + 6);
@@ -429,12 +463,23 @@ async function generateRouteReport(routeId) {
     var perfY = y + 12;
     var perfCol = tableW / 3;
 
-    // Col 1
+    // Col 1 — Success Rate with progress bar
     doc.text('Success Rate:', tableX + 4, perfY);
-    doc.setFont('helvetica', 'bold');
     var successRate = stops.length > 0 ? Math.round((delivered / stops.length) * 100) : 0;
+    // Progress bar background
+    doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(tableX + 4, perfY + 2, 40, 5, 2, 2, 'FD');
+    // Progress bar fill
+    if (successRate > 0) {
+        var fillColor = successRate >= 80 ? synGreen : successRate >= 50 ? [230, 81, 0] : red;
+        doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+        doc.roundedRect(tableX + 4, perfY + 2, Math.max(4, (successRate / 100) * 40), 5, 2, 2, 'F');
+    }
+    // Percentage label
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
-    doc.text(successRate + '%', tableX + 4, perfY + 5);
+    doc.text(successRate + '%', tableX + 48, perfY + 5.5);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
 
@@ -456,9 +501,34 @@ async function generateRouteReport(routeId) {
     doc.text(kmPerStop, tableX + 2*perfCol + 4, perfY + 5);
     doc.setFont('helvetica', 'normal');
 
-    // Row 2 of performance
-    perfY += 12;
-    doc.text('SO Name:', tableX + 4, perfY);
+    // Row 2 — GPS & Feedback KPIs
+    perfY += 11;
+    var gpsCount = stops.filter(function(s) { return s.gps_lat && s.gps_lng; }).length;
+
+    doc.text('GPS Coverage:', tableX + 4, perfY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(gpsCount > 0 ? synGreen[0] : grayDark[0], gpsCount > 0 ? synGreen[1] : grayDark[1], gpsCount > 0 ? synGreen[2] : grayDark[2]);
+    doc.text(gpsCount + '/' + stops.length, tableX + 4, perfY + 5);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+
+    doc.text('Confirmed:', tableX + perfCol + 4, perfY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
+    doc.text(String(confirmedCount), tableX + perfCol + 4, perfY + 5);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+
+    doc.text('Not Received:', tableX + 2*perfCol + 4, perfY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(red[0], red[1], red[2]);
+    doc.text(String(notReceivedCount), tableX + 2*perfCol + 4, perfY + 5);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+
+    // Row 3 — SO / Vehicle / Vendor
+    perfY += 11;
+    doc.text('SO:', tableX + 4, perfY);
     doc.setFont('helvetica', 'bold');
     doc.text(soName, tableX + 4, perfY + 5);
     doc.setFont('helvetica', 'normal');
