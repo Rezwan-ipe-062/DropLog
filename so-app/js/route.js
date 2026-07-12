@@ -139,29 +139,31 @@ async function handleRouteSelect(routeId, isInTransit, isCompleted) {
             }
         } else {
             routeData = route;
-            const { data: stops } = await sb
+            const { data: stops, error: stopsErr } = await sb
                 .from('route_stops')
                 .select('*')
                 .eq('route_id', route.id)
                 .order('stop_sequence');
 
-            stopsData = stops || [];
+            if (!stopsErr) stopsData = stops || [];
 
+            let products = [];
             if (stopsData.length > 0) {
                 const stopIds = stopsData.map(s => s.id);
-                const { data: products } = await sb
+                const { data: productsResult } = await sb
                     .from('stop_products')
                     .select('*')
                     .in('route_stop_id', stopIds);
 
+                products = productsResult || [];
                 productsData = {};
-                (products || []).forEach(p => {
+                products.forEach(p => {
                     if (!productsData[p.route_stop_id]) productsData[p.route_stop_id] = [];
                     productsData[p.route_stop_id].push(p);
                 });
             }
 
-            dbCacheRouteData(routeData, stopsData, (products || []));
+            dbCacheRouteData(routeData, stopsData, products);
         }
 
         document.getElementById('myRoutesLoading').style.display = 'none';
