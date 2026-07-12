@@ -48,6 +48,7 @@ async function addVehicle() {
     const capacity = document.getElementById('fvCapacity').value.trim();
 
     if (!vehicle) { showToast('Enter vehicle number', 'warning'); return; }
+    if (phone && !isValidPhone(phone)) { showToast('Invalid phone number', 'warning'); return; }
 
     try {
         const { error } = await sb.from('fleet_vehicles').insert({

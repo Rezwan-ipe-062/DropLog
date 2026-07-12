@@ -42,7 +42,8 @@ async function loadAvailableGDs() {
             const { data: stops } = await sb
                 .from('parsed_stops')
                 .select('*')
-                .in('gd_id', gdIds);
+                .in('gd_id', gdIds)
+                .eq('status', 'available');
 
             // Build cache: gd_id > [stops]
             stopsCache = {};
@@ -444,6 +445,7 @@ function renderRouteForm() {
     html += '<div class="form-group"><label>Assign SO</label><select id="rfSO"><option value="">- Select Supply Officer -</option></select></div>';
     html += '<div class="form-group"><label>Route Name (optional)</label><input type="text" id="rfName" placeholder="e.g. Feni Route 1"></div>';
     html += '</div>';
+    html += '<div class="form-row"><div class="form-group"><label>Route Sales Value (BDT, optional)</label><input type="number" id="rfSalesValue" placeholder="e.g. 50000" inputmode="numeric"></div></div>';
     html += '<div class="form-row"><div class="selected-summary" id="rfSummary"></div></div>';
     html += '<button class="btn-create-route" onclick="createRoute()">Create Route</button>';
     return html;
@@ -564,6 +566,7 @@ async function createRoute() {
     const vendor = document.getElementById('rfVendor').value.trim();
     const soId = document.getElementById('rfSO').value;
     const routeName = document.getElementById('rfName').value.trim();
+    const salesValue = document.getElementById('rfSalesValue').value.trim();
 
     const selectedVehicle = vehicleList.find(function(v) { return v.vehicle_number === vehicle; });
     const vehicleCapacityMt = selectedVehicle && selectedVehicle.capacity_mt ? selectedVehicle.capacity_mt : null;
@@ -618,6 +621,7 @@ async function createRoute() {
                 district: districts.join(', '),
                 group_delivery_numbers: [...gdSet],
                 total_stops: allStops.length,
+                sales_value: Number(salesValue) || null,
                 created_by: currentAdmin ? currentAdmin.id : null
             })
             .select()
@@ -656,8 +660,22 @@ async function createRoute() {
             }
         }
 
+        // Mark selected stops as assigned (partial GD fulfillment support)
+        for (const stop of allStops) {
+            await sb.from('parsed_stops').update({ status: 'assigned' }).eq('id', stop.id);
+        }
+
+        // Check if each GD has any remaining available stops; if none, mark GD as assigned
         for (const gdNum of gdSet) {
-            await sb.from('available_gds').update({ status: 'assigned' }).eq('group_delivery_number', gdNum);
+            const gd = availableGDs.find(g => g.group_delivery_number === gdNum);
+            if (!gd) continue;
+            const { count } = await sb.from('parsed_stops')
+                .select('id', { count: 'exact', head: true })
+                .eq('gd_id', gd.id)
+                .eq('status', 'available');
+            if (count === 0) {
+                await sb.from('available_gds').update({ status: 'assigned' }).eq('id', gd.id);
+            }
         }
 
         showToast('Route ' + routeCode + ' created!', 'success');

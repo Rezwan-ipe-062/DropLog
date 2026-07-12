@@ -30,6 +30,12 @@ async function generateRouteReport(routeId) {
         if (so) soName = so.name;
     }
 
+    var perKmCost = 0;
+    if (route.plant_name) {
+        var { data: wh } = await sb.from('warehouses').select('per_km_cost').eq('name', route.plant_name).maybeSingle();
+        if (wh && wh.per_km_cost) perKmCost = Number(wh.per_km_cost);
+    }
+
     // Helpers
     function fDate(d) { if (!d) return '--'; return new Date(d).toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'numeric'}); }
     function fTime(d) { if (!d) return '--'; return new Date(d).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', hour12:true}); }
@@ -187,13 +193,13 @@ async function generateRouteReport(routeId) {
     fullRow('Vendor Name', route.vendor_name || '--');
 
     // Financial section
-    fullRow('Route Sales Value', '');
+    fullRow('Route Sales Value', route.sales_value ? 'BDT ' + Number(route.sales_value).toLocaleString() : '--');
     fullRow('Others Region Sales', '');
     fullRow('Transit Volume (MT)', route.transit_volume_mt ? route.transit_volume_mt + ' MT' : '--');
     fullRow('Vehicle Capacity (MT)', route.vehicle_capacity_mt ? route.vehicle_capacity_mt + ' MT' : '--');
-    fullRow('SO Travelling Expense', route.so_travelling_expense ? 'BDT ' + route.so_travelling_expense : '--');
-    fullRow('Carrying Cost', '');
-    fullRow('Loading/Unloading Cost', '');
+    fullRow('SO Travelling Expense', route.so_travelling_expense ? 'BDT ' + Number(route.so_travelling_expense).toLocaleString() : '--');
+    fullRow('Carrying Cost', route.carrying_cost ? 'BDT ' + Number(route.carrying_cost).toLocaleString() : '--');
+    fullRow('Loading/Unloading Cost', route.loading_unloading_cost ? 'BDT ' + Number(route.loading_unloading_cost).toLocaleString() : '--');
 
     // Signatures
     y += 12;
@@ -465,6 +471,56 @@ async function generateRouteReport(routeId) {
     doc.text('Vendor:', tableX + 2*perfCol + 4, perfY);
     doc.setFont('helvetica', 'bold');
     doc.text(route.vendor_name || '--', tableX + 2*perfCol + 4, perfY + 5);
+
+    // --- Cost Distribution Section ---
+    y += 12;
+    if (y > 230) { doc.addPage(); y = M; }
+
+    doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
+    doc.roundedRect(tableX, y, tableW, 42, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cost Distribution', tableX + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+
+    var costKM = (route.driven_km || 0) * perKmCost;
+    var costExpense = Number(route.so_travelling_expense || 0);
+    var costCarrying = Number(route.carrying_cost || 0);
+    var costLoading = Number(route.loading_unloading_cost || 0);
+    var totalCost = costKM + costExpense + costCarrying + costLoading;
+    var salesVal = Number(route.sales_value || 0);
+    var costRatio = salesVal > 0 ? (totalCost / salesVal) * 100 : 0;
+
+    var costX = tableX + 4;
+    var costY = y + 12;
+    var costCol1 = 50;
+    var costCol2 = 30;
+    var costRowH = 5;
+
+    function drawCostRow(label, value, isTotal) {
+        if (isTotal) doc.setFont('helvetica', 'bold');
+        doc.text(label, costX, costY);
+        doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+        doc.text(value, costX + costCol1, costY, { align: 'right' });
+        costY += costRowH;
+    }
+
+    doc.setFont('helvetica', 'normal');
+    drawCostRow('Driven KM (' + (route.driven_km || 0) + ') x Per KM Cost', 'BDT ' + Math.round(costKM).toLocaleString());
+    drawCostRow('SO Travelling Expense', 'BDT ' + Math.round(costExpense).toLocaleString());
+    drawCostRow('Carrying Cost', 'BDT ' + Math.round(costCarrying).toLocaleString());
+    drawCostRow('Loading/Unloading Cost', 'BDT ' + Math.round(costLoading).toLocaleString());
+
+    // Separator line
+    doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
+    doc.line(costX, costY, costX + costCol1 + costCol2, costY);
+    costY += 2;
+
+    drawCostRow('Total Cost', 'BDT ' + Math.round(totalCost).toLocaleString(), true);
+    costY += 1;
+    drawCostRow('Route Sales Value', salesVal ? 'BDT ' + Math.round(salesVal).toLocaleString() : '--', true);
+    drawCostRow('Cost Ratio', costRatio > 0 ? costRatio.toFixed(1) + '%' : '--', true);
 
     // Page 2 footer
     doc.setFontSize(6);

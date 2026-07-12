@@ -50,6 +50,7 @@ async function addUser() {
         showToast('Fill all fields (PIN must be 4 digits)', 'warning');
         return;
     }
+    if (phone && !isValidPhone(phone)) { showToast('Invalid phone number', 'warning'); return; }
 
     try {
         const hashedPin = await hashPin(pin);
@@ -59,12 +60,9 @@ async function addUser() {
             phone: phone || null, warehouse: getWarehouseName()
         };
 
-        var { error } = await sb.from('users').insert(Object.assign({ pin_plain: pin }, payload));
+        var { error } = await sb.from('users').insert(payload);
 
-        if (error && (error.code === '42703' || (error.message && error.message.indexOf('column') >= 0 && error.message.indexOf('pin_plain') >= 0))) {
-            var { error: retryErr } = await sb.from('users').insert(payload);
-            if (retryErr) { showToast('Error: ' + retryErr.message, 'error'); return; }
-        } else if (error) {
+        if (error) {
             showToast('Error: ' + error.message, 'error');
             return;
         }
@@ -102,11 +100,8 @@ async function resetPin(userId, userName) {
     if (!confirm('Set new PIN for ' + userName + '?')) return;
     try {
         var hashed = await hashPin(newPin);
-        var { error } = await sb.from('users').update({ pin: hashed, pin_plain: newPin }).eq('id', userId);
-        if (error && (error.code === '42703' || (error.message && error.message.indexOf('column') >= 0 && error.message.indexOf('pin_plain') >= 0))) {
-            var { error: retryErr } = await sb.from('users').update({ pin: hashed }).eq('id', userId);
-            if (retryErr) { showToast('Error: ' + retryErr.message, 'error'); return; }
-        } else if (error) {
+        var { error } = await sb.from('users').update({ pin: hashed }).eq('id', userId);
+        if (error) {
             showToast('Error: ' + error.message, 'error');
             return;
         }

@@ -96,6 +96,7 @@ async function addContact() {
     const district = document.getElementById('addContactDistrict').value.trim();
 
     if (!name) { showToast('Enter customer name', 'warning'); return; }
+    if (phone && !isValidPhone(phone)) { showToast('Invalid phone number', 'warning'); return; }
 
     try {
         await sb.from('contacts').insert({

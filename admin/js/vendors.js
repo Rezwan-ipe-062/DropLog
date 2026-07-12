@@ -45,6 +45,7 @@ async function addVendor() {
     const phone = document.getElementById('newVendorPhone').value.trim();
 
     if (!name) { showToast('Enter vendor name', 'warning'); return; }
+    if (phone && !isValidPhone(phone)) { showToast('Invalid phone number', 'warning'); return; }
 
     try {
         const { error } = await sb.from('vendors').insert({

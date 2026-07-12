@@ -15,6 +15,8 @@
 </head>
 <body>
 
+<div class="offline-banner" id="offlineBanner" style="display:none;">You are offline — changes will sync when connected</div>
+
 <!-- Header -->
 <div class="header" id="appHeader" style="display:none;">
         <div class="header-left">
@@ -158,7 +160,7 @@
 
     <button class="btn-save-order" id="btnSaveOrder" style="display:none;" onclick="saveStopOrder()">Save Stop Order</button>
 
-    <button class="fab-issue" onclick="showIssueScreen()">! Report Issue</button>
+    <button class="fab-issue" id="fabIssue" onclick="showIssueScreen()">! Report Issue</button>
 </div>
 
 <!-- Delivery Action Screen -->
@@ -175,6 +177,10 @@
     <div class="remark-box">
         <label>Remark (optional)</label>
         <textarea id="deliveryRemark" placeholder="e.g. Left with shop assistant..."></textarea>
+    </div>
+    <div class="partial-qty-box">
+        <label>Quantity Delivered (Partial)</label>
+        <input type="number" id="partialQty" placeholder="e.g. 30" inputmode="numeric">
     </div>
     <div class="action-section">
         <button class="btn-delivered" onclick="handleDelivered()">Mark as Delivered</button>
@@ -227,6 +233,14 @@
                 <label>SO Travelling Expense (BDT)</label>
                 <input type="number" id="completeExpense" placeholder="e.g. 500" inputmode="numeric">
             </div>
+            <div class="input-group">
+                <label>Carrying Cost (BDT)</label>
+                <input type="number" id="completeCarryingCost" placeholder="e.g. 1000" inputmode="numeric">
+            </div>
+            <div class="input-group">
+                <label>Loading/Unloading Cost (BDT)</label>
+                <input type="number" id="completeLoadingCost" placeholder="e.g. 500" inputmode="numeric">
+            </div>
         </div>
         <button class="btn-primary" onclick="handleFinish()">Submit and Finish</button>
     </div>
@@ -237,6 +251,7 @@
 
 <!-- Scripts -->
 <script src="js/config.js"></script>
+<script src="js/db.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/gps.js"></script>
 <script src="js/route.js"></script>

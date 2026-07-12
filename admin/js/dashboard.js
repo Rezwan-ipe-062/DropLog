@@ -118,11 +118,6 @@ async function loadRecentRoutes(filterStatus) {
         } else {
             if (filterLabel) filterLabel.textContent = 'Showing: ' + filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1);
         if (clearFilter) clearFilter.classList.remove('hidden');
-
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-text">No delivery exceptions.</td></tr>';
-            return;
-        }
         }
 
         if (!data || data.length === 0) {
@@ -389,8 +384,22 @@ async function viewRouteDetail(routeId) {
     html += '<div class="rd-info-item"><span class="rd-label">Total Stops</span><span class="rd-value">' + route.total_stops + '</span></div>';
     html += '<div class="rd-info-item"><span class="rd-label">Delivered</span><span class="rd-value rd-green">' + (route.completed_stops || 0) + '</span></div>';
     html += '<div class="rd-info-item"><span class="rd-label">Failed</span><span class="rd-value rd-red">' + (route.failed_stops || 0) + '</span></div>';
+    html += '<div class="rd-info-item"><span class="rd-label">Expense (BDT)</span><span class="rd-value">' + (route.so_travelling_expense ? Number(route.so_travelling_expense).toLocaleString() : '--') + '</span></div>';
+    html += '<div class="rd-info-item"><span class="rd-label">Sales Value (BDT)</span><span class="rd-value">' + (route.sales_value ? Number(route.sales_value).toLocaleString() : '--') + '</span></div>';
     html += '<div class="rd-info-item"><span class="rd-label">GPS Distance</span><span class="rd-value">' + (route.total_distance_km ? route.total_distance_km + ' km' : 'Pending') + '</span></div>';
     html += '</div>';
+
+    if (route.status === 'completed') {
+        html += '<div class="rd-section-title">Cost Edit (CSO)</div>';
+        html += '<div class="rd-cost-edit">';
+        html += '<div class="form-row">';
+        html += '<div class="form-group"><label>Route Sales Value (BDT)</label><input type="number" id="editSalesValue" value="' + (route.sales_value || '') + '" class="input input-full"></div>';
+        html += '<div class="form-group"><label>Carrying Cost (BDT)</label><input type="number" id="editCarryingCost" value="' + (route.carrying_cost || '') + '" class="input input-full"></div>';
+        html += '<div class="form-group"><label>Loading/Unloading Cost (BDT)</label><input type="number" id="editLoadingCost" value="' + (route.loading_unloading_cost || '') + '" class="input input-full"></div>';
+        html += '</div>';
+        html += '<button class="btn-create-route" onclick="saveRouteCosts(\'' + route.id + '\')">Save Cost Changes</button>';
+        html += '</div>';
+    }
 
     html += '<h3 class="rd-section-title">Delivery Stops</h3>';
     html += '<table class="rd-stops-table"><thead><tr><th>#</th><th>Customer</th><th>Address</th><th>Status</th><th>Confirmed</th><th>Customer Reply</th><th>Time</th></tr></thead><tbody>';
@@ -441,6 +450,26 @@ async function viewRouteDetail(routeId) {
     var existing = document.getElementById('routeDetailOverlay');
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveRouteCosts(routeId) {
+    try {
+        var salesValue = document.getElementById('editSalesValue').value.trim();
+        var carryingCost = document.getElementById('editCarryingCost').value.trim();
+        var loadingCost = document.getElementById('editLoadingCost').value.trim();
+        var updates = {};
+        if (salesValue) updates.sales_value = Number(salesValue);
+        if (carryingCost) updates.carrying_cost = Number(carryingCost);
+        if (loadingCost) updates.loading_unloading_cost = Number(loadingCost);
+        var { error } = await sb.from('routes').update(updates).eq('id', routeId);
+        if (error) { showToast('Error saving costs: ' + error.message, 'error'); return; }
+        showToast('Costs updated successfully', 'success');
+        closeRouteDetail();
+        loadDashboard();
+    } catch (e) {
+        console.error('saveRouteCosts:', e);
+        showToast(e.message || 'Something went wrong', 'error');
+    }
 }
 
 function toggleRouteMap(routeId) {

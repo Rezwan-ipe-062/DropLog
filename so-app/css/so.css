@@ -55,6 +55,19 @@ body, .header, .route-card, .route-header-card, .customer-card, .stop-item,
 .mb-3 { margin-bottom: var(--sp-3); }
 .mb-4 { margin-bottom: var(--sp-4); }
 
+/* Offline Banner */
+.offline-banner {
+    background: var(--orange);
+    color: white;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 101;
+}
+
 /* Header */
 .header {
     background: var(--syn-blue);

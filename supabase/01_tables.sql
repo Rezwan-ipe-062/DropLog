@@ -406,7 +406,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS vendor_settlements (
     id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    route_id            UUID REFERENCES routes(id),    -- Related route
+    route_id            UUID REFERENCES routes(id) ON DELETE CASCADE,  -- Related route
     vendor_name         TEXT,                          -- Vendor/contractor name
     vehicle_number      TEXT,                          -- Vehicle used
     gps_distance_km     NUMERIC,                       -- RESERVED: OSRM GPS distance

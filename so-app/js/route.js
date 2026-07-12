@@ -18,29 +18,56 @@ async function loadMyRoutes() {
             .from('routes')
             .select('id, route_code, route_name, district, vehicle_number, status, total_stops, completed_stops, failed_stops')
             .eq('assigned_so_id', currentUser.id)
-            .in('status', ['pending', 'in_transit'])
+            .in('status', ['pending', 'in_transit', 'completed'])
             .order('created_at', { ascending: false });
 
         document.getElementById('myRoutesLoading').style.display = 'none';
 
-        if (error) { showToast('Error loading routes', 'error'); return; }
-
-        const container = document.getElementById('myRoutesList');
-
-        if (!data || data.length === 0) {
-            container.innerHTML = '<div class="empty-text" style="margin-top:40px;">No routes assigned to you.</div>';
+        if (error) {
+            var cachedRoutes = await dbGetAll('routes');
+            if (cachedRoutes && cachedRoutes.length > 0) {
+                data = cachedRoutes.filter(function(r) { return r.assigned_so_id === currentUser.id && (r.status === 'pending' || r.status === 'in_transit' || r.status === 'completed'); });
+                if (data.length > 0) {
+                    container = document.getElementById('myRoutesList');
+                    container.innerHTML = data.map(function(r) {
+            var isInTransit = r.status === 'in_transit';
+            var isCompleted = r.status === 'completed';
+            var done = (r.completed_stops || 0) + (r.failed_stops || 0);
+            var pct = r.total_stops > 0 ? Math.round((done / r.total_stops) * 100) : 0;
+            var statusLabel = isCompleted ? 'Completed' : (isInTransit ? 'In Transit' : 'Pending');
+            return '<div class="route-card" onclick="handleRouteSelect(\'' + r.id + '\', ' + isInTransit + ', ' + isCompleted + ')">' +
+                '<div class="route-card-header">' +
+                '<h3>' + escapeHtml(r.route_name || r.route_code) + '</h3>' +
+                '<span class="route-card-status ' + r.status + '">' + statusLabel + '</span>' +
+                '</div>' +
+                '<div class="route-card-meta">' +
+                '<span>' + escapeHtml(r.district || '') + '</span>' +
+                '<span>' + escapeHtml(r.vehicle_number || '') + '</span>' +
+                '<span>' + done + '/' + (r.total_stops || 0) + ' stops</span>' +
+                '</div>' +
+                (isInTransit ? '<div class="route-card-progress"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span>' + pct + '%</span></div>' : '') +
+                '</div>';
+                    }).join('');
+                    showToast('Offline — showing cached routes', 'warning');
+                    return;
+                }
+            }
+            showToast('Error loading routes', 'error');
             return;
         }
 
-        container.innerHTML = data.map(r => {
-            const isInTransit = r.status === 'in_transit';
-            const done = (r.completed_stops || 0) + (r.failed_stops || 0);
-            const pct = r.total_stops > 0 ? Math.round((done / r.total_stops) * 100) : 0;
+        container = document.getElementById('myRoutesList');
+        container.innerHTML = data.map(function(r) {
+            var isInTransit = r.status === 'in_transit';
+            var isCompleted = r.status === 'completed';
+            var done = (r.completed_stops || 0) + (r.failed_stops || 0);
+            var pct = r.total_stops > 0 ? Math.round((done / r.total_stops) * 100) : 0;
+            var statusLabel = isCompleted ? 'Completed' : (isInTransit ? 'In Transit' : 'Pending');
 
-            return '<div class="route-card" onclick="handleRouteSelect(\'' + r.id + '\', ' + isInTransit + ')">' +
+            return '<div class="route-card" onclick="handleRouteSelect(\'' + r.id + '\', ' + isInTransit + ', ' + isCompleted + ')">' +
                 '<div class="route-card-header">' +
                 '<h3>' + escapeHtml(r.route_name || r.route_code) + '</h3>' +
-                '<span class="route-card-status ' + r.status + '">' + (isInTransit ? 'In Transit' : 'Pending') + '</span>' +
+                '<span class="route-card-status ' + r.status + '">' + statusLabel + '</span>' +
                 '</div>' +
                 '<div class="route-card-meta">' +
                 '<span>' + escapeHtml(r.district || '') + '</span>' +
@@ -50,18 +77,48 @@ async function loadMyRoutes() {
                 (isInTransit ? '<div class="route-card-progress"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span>' + pct + '%</span></div>' : '') +
                 '</div>';
         }).join('');
+
+        // Cache route list for offline access
+        (data || []).forEach(function(r) { dbSave('routes', r); });
     } catch (e) {
         console.error('loadMyRoutes:', e);
         document.getElementById('myRoutesLoading').style.display = 'none';
-        showToast(e.message || 'Something went wrong', 'error');
+        var cachedRoutes = await dbGetAll('routes');
+        var filtered = cachedRoutes.filter(function(r) { return r.assigned_so_id === currentUser.id && (r.status === 'pending' || r.status === 'in_transit' || r.status === 'completed'); });
+        if (filtered.length > 0) {
+            var list = document.getElementById('myRoutesList');
+            list.innerHTML = filtered.map(function(r) {
+                var isInTransit = r.status === 'in_transit';
+                var isCompleted = r.status === 'completed';
+                var done = (r.completed_stops || 0) + (r.failed_stops || 0);
+                var pct = r.total_stops > 0 ? Math.round((done / r.total_stops) * 100) : 0;
+                var statusLabel = isCompleted ? 'Completed' : (isInTransit ? 'In Transit' : 'Pending');
+                return '<div class="route-card" onclick="handleRouteSelect(\'' + r.id + '\', ' + isInTransit + ', ' + isCompleted + ')">' +
+                    '<div class="route-card-header">' +
+                    '<h3>' + escapeHtml(r.route_name || r.route_code) + '</h3>' +
+                    '<span class="route-card-status ' + r.status + '">' + statusLabel + '</span>' +
+                    '</div>' +
+                    '<div class="route-card-meta">' +
+                    '<span>' + escapeHtml(r.district || '') + '</span>' +
+                    '<span>' + escapeHtml(r.vehicle_number || '') + '</span>' +
+                    '<span>' + done + '/' + (r.total_stops || 0) + ' stops</span>' +
+                    '</div>' +
+                    (isInTransit ? '<div class="route-card-progress"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span>' + pct + '%</span></div>' : '') +
+                    '</div>';
+            }).join('');
+            showToast('Offline — showing cached routes', 'warning');
+        } else {
+            showToast(e.message || 'Something went wrong', 'error');
+        }
     }
 }
 
-async function handleRouteSelect(routeId, isInTransit) {
+async function handleRouteSelect(routeId, isInTransit, isCompleted) {
     try {
         if (!sb) return;
 
         document.getElementById('myRoutesLoading').style.display = 'block';
+        document.getElementById('myRoutesLoading').innerHTML = '<div class="spinner"></div> Loading route...';
 
         const { data: route, error } = await sb
             .from('routes')
@@ -69,33 +126,53 @@ async function handleRouteSelect(routeId, isInTransit) {
             .eq('id', routeId)
             .single();
 
-        if (error || !route) { showToast('Route not found', 'error'); return; }
-
-        routeData = route;
-
-        const { data: stops } = await sb
-            .from('route_stops')
-            .select('*')
-            .eq('route_id', route.id)
-            .order('stop_sequence');
-
-        stopsData = stops || [];
-
-        if (stopsData.length > 0) {
-            const stopIds = stopsData.map(s => s.id);
-            const { data: products } = await sb
-                .from('stop_products')
+        if (error || !route) {
+            var cached = await dbLoadRouteData(routeId);
+            if (cached) {
+                routeData = cached.route;
+                stopsData = cached.stops || [];
+                productsData = cached.products || {};
+            } else {
+                document.getElementById('myRoutesLoading').style.display = 'none';
+                showToast('Route not found', 'error');
+                return;
+            }
+        } else {
+            routeData = route;
+            const { data: stops } = await sb
+                .from('route_stops')
                 .select('*')
-                .in('route_stop_id', stopIds);
+                .eq('route_id', route.id)
+                .order('stop_sequence');
 
-            productsData = {};
-            (products || []).forEach(p => {
-                if (!productsData[p.route_stop_id]) productsData[p.route_stop_id] = [];
-                productsData[p.route_stop_id].push(p);
-            });
+            stopsData = stops || [];
+
+            if (stopsData.length > 0) {
+                const stopIds = stopsData.map(s => s.id);
+                const { data: products } = await sb
+                    .from('stop_products')
+                    .select('*')
+                    .in('route_stop_id', stopIds);
+
+                productsData = {};
+                (products || []).forEach(p => {
+                    if (!productsData[p.route_stop_id]) productsData[p.route_stop_id] = [];
+                    productsData[p.route_stop_id].push(p);
+                });
+            }
+
+            dbCacheRouteData(routeData, stopsData, (products || []));
         }
 
-        if (isInTransit) {
+        document.getElementById('myRoutesLoading').style.display = 'none';
+
+        if (isCompleted || routeData.status === 'completed') {
+            renderRouteScreen();
+            document.getElementById('fabIssue').style.display = 'none';
+            document.getElementById('btnSaveOrder').style.display = 'none';
+            showScreen('screenStops');
+            showToast('Route completed — view only', 'info');
+        } else if (isInTransit || routeData.status === 'in_transit') {
             routeStartTime = routeData.started_at ? new Date(routeData.started_at) : new Date();
             renderRouteScreen();
             showScreen('screenStops');
@@ -106,6 +183,18 @@ async function handleRouteSelect(routeId, isInTransit) {
         }
     } catch (e) {
         console.error('handleRouteSelect:', e);
+        var cached = await dbLoadRouteData(routeId).catch(function() { return null; });
+        if (cached) {
+            routeData = cached.route;
+            stopsData = cached.stops || [];
+            productsData = cached.products || {};
+            document.getElementById('myRoutesLoading').style.display = 'none';
+            routeStartTime = routeData.started_at ? new Date(routeData.started_at) : new Date();
+            renderRouteScreen();
+            showScreen('screenStops');
+            showToast('Offline mode', 'warning');
+            return;
+        }
         showToast(e.message || 'Something went wrong', 'error');
     }
 }
@@ -136,6 +225,12 @@ async function handleStartRoute() {
         }
 
         routeData = route;
+
+        if (routeData.status === 'completed') {
+            document.getElementById('routeLoading').style.display = 'none';
+            showToast('Route already completed', 'warning');
+            return;
+        }
 
         // Load stops
         const { data: stops, error: stopsErr } = await sb
@@ -205,7 +300,7 @@ async function renderStartScreen() {
     }
 
     // Show customer list preview
-    var preview = stopsData.map(function(s, i) { 
+    let preview = stopsData.map(function(s, i) { 
         return '<div class="start-stop-item">' + (i+1) + '. ' + escapeHtml(s.customer_name) + '</div>'; 
     }).join('');
     document.getElementById('startStopPreview').innerHTML = preview;
@@ -214,20 +309,20 @@ async function renderStartScreen() {
 async function handleRouteStart() {
     try {
         // Validate required fields
-        var initialKm = document.getElementById('startInitialKm').value.trim();
-        var transitVolume = document.getElementById('startTransitVolume').value.trim();
-        var vehicleCapacity = document.getElementById('startVehicleCapacity').value.trim();
+        let initialKm = document.getElementById('startInitialKm').value.trim();
+        let transitVolume = document.getElementById('startTransitVolume').value.trim();
+        let vehicleCapacity = document.getElementById('startVehicleCapacity').value.trim();
 
         if (!initialKm) { showToast('Enter initial KM reading', 'warning'); return; }
 
-        var btn = document.getElementById('btnStartRoute');
+        let btn = document.getElementById('btnStartRoute');
         btn.disabled = true;
         btn.textContent = 'Starting...';
 
         routeStartTime = new Date();
-        var gps = await getGPS();
+        let gps = await getGPS();
 
-        await sb.from('routes').update({
+        var { error: startErr } = await sb.from('routes').update({
             status: 'in_transit',
             started_at: routeStartTime.toISOString(),
             start_gps_lat: gps.lat,
@@ -236,6 +331,13 @@ async function handleRouteStart() {
             transit_volume_mt: Number(transitVolume) || null,
             vehicle_capacity_mt: Number(vehicleCapacity) || null
         }).eq('id', routeData.id);
+
+        if (startErr) {
+            btn.disabled = false;
+            btn.textContent = 'START';
+            showToast('Failed to start route', 'error');
+            return;
+        }
 
         // Log event
         await sb.from('delivery_events').insert({
@@ -252,6 +354,8 @@ async function handleRouteStart() {
         routeData.vehicle_capacity_mt = Number(vehicleCapacity) || null;
         routeData.status = 'in_transit';
         routeData.started_at = routeStartTime.toISOString();
+
+        dbCacheRouteData(routeData, stopsData, []);
 
         btn.disabled = false;
         btn.textContent = 'START';
@@ -281,6 +385,7 @@ function renderRouteScreen() {
 function renderStopList() {
     const list = document.getElementById('stopList');
     let completed = 0;
+    var isReadOnly = routeData && routeData.status === 'completed';
 
     let html = '';
     stopsData.forEach((stop, i) => {
@@ -300,9 +405,11 @@ function renderStopList() {
         const timeStr = stop.delivered_at ? '<div class="stop-time">' + formatTime(stop.delivered_at) + '</div>' : '';
 
         html += '<li class="stop-item ' + statusClass + '" data-index="' + i + '">';
-        html += '<div class="drag-handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>';
-        html += '<div class="stop-indicator ' + statusClass + '" onclick="openDelivery(' + i + ')">' + indicator + '</div>';
-        html += '<div class="stop-info" onclick="openDelivery(' + i + ')">';
+        if (!isReadOnly) {
+            html += '<div class="drag-handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></div>';
+        }
+        html += '<div class="stop-indicator ' + statusClass + '" onclick="' + (isReadOnly ? '' : 'openDelivery(' + i + ')') + '">' + indicator + '</div>';
+        html += '<div class="stop-info" onclick="' + (isReadOnly ? '' : 'openDelivery(' + i + ')') + '">';
         html += '<div class="stop-name">' + escapeHtml(stop.customer_name) + '</div>';
         html += '<div class="stop-detail">' + escapeHtml((stop.address || '').substring(0, 40)) + ' - ' + totalQty + ' units</div>';
         html += timeStr;
@@ -314,8 +421,8 @@ function renderStopList() {
 
     list.innerHTML = html;
 
-    // Init SortableJS for drag & drop reorder
-    if (typeof Sortable !== 'undefined') {
+    // Init SortableJS for drag & drop reorder (skip for completed routes)
+    if (!isReadOnly && typeof Sortable !== 'undefined') {
         list._sortable = Sortable.create(list, {
             handle: '.drag-handle',
             animation: 200,
@@ -334,9 +441,12 @@ function renderStopList() {
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressLabel').textContent = pct + '%';
 
-    // Check if all done
-    if (stopsData.length > 0 && stopsData.every(s => s.status !== 'pending')) {
-        setTimeout(showRouteComplete, 500);
+    // Check if all done (skip auto-nav if every stop failed or route already completed)
+    if (!isReadOnly && stopsData.length > 0 && stopsData.every(s => s.status !== 'pending')) {
+        var someDelivered = stopsData.some(s => s.status === 'delivered' || s.status === 'partial');
+        if (someDelivered) {
+            setTimeout(showRouteComplete, 2000);
+        }
     }
 }
 

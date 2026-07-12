@@ -84,3 +84,26 @@ window.addEventListener('popstate', function(e) {
         window.scrollTo(0, 0);
     }
 });
+
+function updateOnlineStatus() {
+    var banner = document.getElementById('offlineBanner');
+    if (!banner) return;
+    if (navigator.onLine) {
+        banner.style.display = 'none';
+    } else {
+        banner.style.display = 'block';
+    }
+}
+
+window.addEventListener('online', function() {
+    updateOnlineStatus();
+    showToast('Back online', 'success');
+    dbFlushQueue().then(function(count) {
+        if (count > 0) showToast(count + ' pending changes synced', 'success');
+    });
+});
+
+window.addEventListener('offline', function() {
+    updateOnlineStatus();
+    showToast('No internet connection', 'warning');
+});

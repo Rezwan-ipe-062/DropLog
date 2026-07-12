@@ -43,7 +43,8 @@ ALTER TABLE parsed_stops ADD COLUMN IF NOT EXISTS display_order INT DEFAULT 0;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS delivery_log JSONB;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS error_message TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS recipient_email TEXT;
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS channel TEXT
+    CHECK (channel IN ('sms', 'whatsapp', 'email', 'push'));
 
 
 -- ============================================================================

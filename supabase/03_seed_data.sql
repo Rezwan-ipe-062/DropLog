@@ -29,10 +29,10 @@
 --           BGR = Bogra  (also spelled Bogura in some datasets)
 -- ============================================================================
 INSERT INTO warehouses (code, name, location) VALUES
-    ('CTG', 'Chittagong', 'Chittagong'),
-    ('GAZ', 'Gazipur',    'Gazipur'),
-    ('JSR', 'Jessore',    'Jessore'),
-    ('BGR', 'Bogra',      'Bogra')
+    ('CTG', 'CHITTAGONG', 'Chittagong'),
+    ('GAZ', 'GAZIPUR',    'Gazipur'),
+    ('JSR', 'JASHORE',    'Jessore'),
+    ('BGR', 'BOGURA',     'Bogra')
 ON CONFLICT (code) DO NOTHING;
 
 

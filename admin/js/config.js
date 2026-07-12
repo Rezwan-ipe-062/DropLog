@@ -83,6 +83,11 @@ function showToast(message, type = 'info') {
     showToast._t = setTimeout(() => toast.classList.remove('show'), duration);
 }
 
+function isValidPhone(phone) {
+    if (!phone) return true;
+    return /^[\d\+\-\s\(\)]{7,20}$/.test(String(phone).trim());
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return 'â€”';
     const d = new Date(dateStr);
