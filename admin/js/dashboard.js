@@ -1,4 +1,4 @@
-﻿let dashboardPolling = null;
+let dashboardPolling = null;
 let _activeFilter = null;
 
 async function loadDashboard() {
@@ -10,11 +10,12 @@ async function loadDashboard() {
         const [routesRes, issuesRes, excRes] = await Promise.all([
             sb.from('routes').select('id, status, total_stops, completed_stops, failed_stops').eq('plant_name', wh),
             sb.from('issues').select('*, routes!inner(plant_name)').eq('routes.plant_name', wh).eq('acknowledged', false),
-            sb.from('route_stops').select('id', { count: 'exact', head: true }).eq('delivery_exception', true).eq('routes.plant_name', wh)
+            sb.from('route_stops').select('id', { count: 'exact', head: true }).eq('delivery_exception', true).eq('routes!inner.plant_name', wh)
         ]);
 
         if (routesRes.error) { console.error('dashboard routes query:', routesRes.error); }
         if (issuesRes.error) { console.error('dashboard issues query:', issuesRes.error); }
+        if (excRes.error) { console.error('dashboard exceptions query:', excRes.error); }
 
         const routes = routesRes.data || [];
         const pending = routes.filter(r => r.status === 'pending').length;
