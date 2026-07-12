@@ -54,6 +54,9 @@ async function generateRouteReport(routeId) {
     var grayDark = [61, 66, 80];
     var white = [255, 255, 255];
     var red = [183, 28, 28];
+    var amber = [245, 158, 11];
+    var deepBlue = [0, 59, 111];
+    var ink = [23, 33, 43];
 
     // ================================================================
     // PAGE 1: Official Route Information Form
@@ -232,31 +235,27 @@ async function generateRouteReport(routeId) {
     doc.text('Page 1 of 2', W - M, H - 8, { align: 'right' });
 
     // ================================================================
-    // PAGE 2: Trip Analytics & Delivery Detail
+    // PAGE 2: Exception Review & Delivery Dashboard
     // ================================================================
     doc.addPage();
     y = 0;
 
-    // Header bar
-    doc.setFillColor(synBlue[0], synBlue[1], synBlue[2]);
-    doc.rect(0, 0, W, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TRIP DETAIL & ANALYTICS', M, 10);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.text(route.route_code + ' | ' + (route.route_name || route.district), M, 15);
-    doc.text('DropLog', W - M, 10, { align: 'right' });
-    doc.text(fDate(route.dispatch_date), W - M, 15, { align: 'right' });
-
-    doc.setTextColor(0, 0, 0);
-    y = 24;
-
-    // --- Summary Cards Row ---
+    // Compute aggregates
     var delivered = stops.filter(function(s) { return s.status === 'delivered' || s.status === 'partial'; }).length;
     var failed = stops.filter(function(s) { return s.status === 'failed'; }).length;
     var pending = stops.filter(function(s) { return s.status === 'pending'; }).length;
+    var confirmedCount = stops.filter(function(s) { return s.customer_response === 'confirmed_received'; }).length;
+    var notReceivedCount = stops.filter(function(s) { return s.customer_response === 'not_received'; }).length;
+    var noResponseCount = stops.filter(function(s) { return !s.customer_response || s.customer_response === 'no_response'; }).length;
+    var gpsCount = stops.filter(function(s) { return s.gps_lat && s.gps_lng; }).length;
+    var successRate = stops.length > 0 ? Math.round((delivered / stops.length) * 100) : 0;
+    var costKM = (route.driven_km || 0) * perKmCost;
+    var costExpense = Number(route.so_travelling_expense || 0);
+    var costCarrying = Number(route.carrying_cost || 0);
+    var costLoading = Number(route.loading_unloading_cost || 0);
+    var totalCost = costKM + costExpense + costCarrying + costLoading;
+    var salesVal = Number(route.sales_value || 0);
+    var costRatio = salesVal > 0 ? (totalCost / salesVal) * 100 : 0;
 
     // Duration calc
     var duration = '--';
@@ -267,401 +266,491 @@ async function generateRouteReport(routeId) {
         duration = hrs + 'h ' + mins + 'm';
     }
 
-    var cardW = (tableW - 12) / 4;
-    var cardH = 16;
-    var cards = [
-        { label: 'DELIVERED', value: delivered + '/' + stops.length, color: synGreen },
-        { label: 'FAILED', value: String(failed), color: red },
-        { label: 'DURATION', value: duration, color: synBlue },
-        { label: 'DISTANCE', value: (route.initial_km_reading && route.final_km_reading && route.driven_km) ? route.driven_km + ' km' : '--', color: synBlue }
-    ];
+    // --- Header Bar ---
+    doc.setFillColor(synBlue[0], synBlue[1], synBlue[2]);
+    doc.rect(0, 0, W, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EXCEPTION REVIEW', M, 10);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(route.route_code + ' | ' + (route.route_name || route.district), M, 15);
+    doc.text('DropLog', W - M, 10, { align: 'right' });
+    doc.text(fDate(route.dispatch_date), W - M, 15, { align: 'right' });
 
-    cards.forEach(function(card, i) {
-        var cx = tableX + i * (cardW + 4);
-        doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
-        doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'F');
-        doc.setFontSize(6.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-        doc.text(card.label, cx + 4, y + 5);
-        doc.setFontSize(12);
-        doc.setTextColor(card.color[0], card.color[1], card.color[2]);
-        doc.text(card.value, cx + 4, y + 12);
-    });
+    doc.setTextColor(0, 0, 0);
+    y = 24;
 
-    y += cardH + 8;
+    // --- Hero Gradient Area ---
+    var heroH = 36;
+    var gradSteps = 20;
+    for (var g = 0; g < gradSteps; g++) {
+        var t = g / gradSteps;
+        var r = Math.round(deepBlue[0] + (synBlue[0] - deepBlue[0]) * t);
+        var gr = Math.round(deepBlue[1] + (synBlue[1] - deepBlue[1]) * t);
+        var b = Math.round(deepBlue[2] + (synBlue[2] - deepBlue[2]) * t);
+        doc.setFillColor(r, gr, b);
+        doc.rect(tableX + g * (tableW / gradSteps), y, tableW / gradSteps + 1, heroH, 'F');
+    }
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EXCEPTION-LED EXECUTIVE REPORT', tableX + 6, y + 7);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    var heroTitle = 'Failed Delivery Investigation';
+    if (failed === 0) heroTitle = 'Route Performance Review';
+    if (route.route_name) heroTitle += ' - ' + route.route_name;
+    else if (route.district) heroTitle += ' - ' + route.district;
+    doc.text(heroTitle, tableX + 6, y + 17);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(200, 215, 235);
+    doc.text('Transit ' + (route.route_code || '--') + ' | ' + soName + ' | ' + (route.vehicle_number || '--'), tableX + 6, y + 27);
+
+    // Decision box (right side)
+    doc.setFillColor(40, 70, 110);
+    doc.roundedRect(tableX + tableW - 62, y + 4, 58, heroH - 8, 4, 4, 'F');
+    doc.setDrawColor(100, 140, 180);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(tableX + tableW - 62, y + 4, 58, heroH - 8, 4, 4, 'S');
+    // Priority pill
+    doc.setFillColor(180, 40, 40);
+    doc.roundedRect(tableX + tableW - 56, y + 7, 46, 7, 10, 10, 'F');
+    doc.setTextColor(255, 230, 230);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.text(failed > 0 ? 'PRIORITY: INVESTIGATE' : 'STATUS: COMPLETED', tableX + tableW - 33, y + 12, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(200, 220, 240);
+    var decisionText = failed > 0 ? 'Review failed delivery and vendor performance.' : 'All stops delivered. Review route economics.';
+    doc.text(decisionText, tableX + tableW - 56, y + 19, { maxWidth: 48 });
     doc.setTextColor(0, 0, 0);
 
-    // --- Delivery Timeline Table ---
-    doc.setFontSize(9);
+    y += heroH + 6;
+
+    // --- Alert Section (only if failed > 0) ---
+    if (failed > 0) {
+        var failedStop = stops.filter(function(s) { return s.status === 'failed'; })[0];
+        var alertH = 26;
+        doc.setFillColor(255, 241, 242);
+        doc.roundedRect(tableX, y, tableW, alertH, 5, 5, 'F');
+        doc.setDrawColor(254, 205, 211);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(tableX, y, tableW, alertH, 5, 5, 'S');
+
+        // Red circle with !
+        doc.setFillColor(red[0], red[1], red[2]);
+        doc.circle(tableX + 12, y + alertH / 2, 7, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('!', tableX + 12, y + alertH / 2 + 4, { align: 'center' });
+
+        // Alert text
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text(failed + ' failed delivery' + (failed > 1 ? 's' : '') + ' require' + (failed > 1 ? '' : 's') + ' management follow-up', tableX + 26, y + 9);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(127, 29, 29);
+        if (failedStop) {
+            var alertDetail = failedStop.customer_name;
+            if (failedStop.remark) alertDetail += ' - ' + failedStop.remark;
+            doc.text(alertDetail, tableX + 26, y + 17);
+        }
+
+        // Decision needed box
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(tableX + tableW - 62, y + 3, 58, alertH - 6, 4, 4, 'F');
+        doc.setDrawColor(254, 205, 211);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(tableX + tableW - 62, y + 3, 58, alertH - 6, 4, 4, 'S');
+        doc.setTextColor(red[0], red[1], red[2]);
+        doc.setFontSize(6.5);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Decision needed', tableX + tableW - 56, y + 9);
+        doc.setFontSize(5.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        doc.text('Assign owner, confirm evidence, decide re-delivery', tableX + tableW - 56, y + 15, { maxWidth: 50 });
+
+        y += alertH + 6;
+    }
+
+    // --- KPI Grid (5 cards) ---
+    var kpiCardW = (tableW - 16) / 5;
+    var kpiH = 28;
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'bold');
-    doc.text('Delivery Timeline', tableX, y);
+    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+    doc.text('DECISION KPIs', tableX, y);
+    y += 5;
+
+    var kpis = [
+        { label: 'Failed Stops', value: String(failed), note: failed > 0 ? (stops.filter(function(s){return s.status==='failed';})[0]||{}).customer_name||'' : 'None', color: failed > 0 ? 'red' : 'green' },
+        { label: 'Success Rate', value: successRate + '%', note: delivered + ' delivered of ' + stops.length, color: successRate >= 80 ? 'green' : successRate >= 50 ? 'amber' : 'red' },
+        { label: 'Confirmed Receipt', value: confirmedCount + '/' + stops.length, note: confirmedCount > 0 ? String(confirmedCount) + ' confirmed' : 'No confirmations', color: confirmedCount > 0 ? 'green' : notReceivedCount > 0 ? 'red' : 'amber' },
+        { label: 'GPS Coverage', value: gpsCount + '/' + stops.length, note: gpsCount > 0 ? Math.round(gpsCount/stops.length*100) + '% coverage' : 'No GPS data', color: gpsCount/stops.length >= 0.7 ? 'green' : gpsCount > 0 ? 'amber' : 'red' },
+        { label: 'Cost Ratio', value: costRatio > 0 ? costRatio.toFixed(1) + '%' : '--', note: totalCost > 0 ? 'BDT ' + Math.round(totalCost).toLocaleString() + ' vs ' + (salesVal ? 'BDT ' + Math.round(salesVal).toLocaleString() : '--') : 'No cost data', color: costRatio > 30 ? 'red' : costRatio > 15 ? 'amber' : 'green' }
+    ];
+
+    var kpiColors = {
+        red: red,
+        green: synGreen,
+        amber: [230, 126, 34]
+    };
+
+    kpis.forEach(function(kpi, i) {
+        var kx = tableX + i * (kpiCardW + 4);
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(kx, y, kpiCardW, kpiH, 4, 4, 'F');
+        doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(kx, y, kpiCardW, kpiH, 4, 4, 'S');
+
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        doc.text(kpi.label, kx + 4, y + 5);
+
+        var c = kpiColors[kpi.color] || grayDark;
+        doc.setTextColor(c[0], c[1], c[2]);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(kpi.value, kx + 4, y + 19);
+
+        doc.setFontSize(5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        doc.text(kpi.note, kx + 4, y + 25, { maxWidth: kpiCardW - 6 });
+    });
+
+    y += kpiH + 8;
+
+    // --- Delivery Timeline with Management Action ---
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+    doc.text('DELIVERY TIMELINE', tableX, y);
     y += 5;
 
     // Table header
+    var colDefs = [
+        { x: 0, w: 8, label: '#' },
+        { x: 8, w: 48, label: 'Customer' },
+        { x: 56, w: 24, label: 'Status' },
+        { x: 80, w: 38, label: 'Remark' },
+        { x: 118, w: 38, label: 'Mgmt Action' },
+        { x: 156, w: 26, label: 'Reply & Time' }
+    ];
     doc.setFillColor(synBlue[0], synBlue[1], synBlue[2]);
     doc.rect(tableX, y, tableW, 6, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'bold');
-    doc.text('#', tableX + 2, y + 4.2);
-    doc.text('Customer', tableX + 10, y + 4.2);
-    doc.text('GPS', tableX + 48, y + 4.2);
-    doc.text('Status', tableX + 80, y + 4.2);
-    doc.text('Remark', tableX + 104, y + 4.2);
-    doc.text('Reply', tableX + 142, y + 4.2);
-    doc.text('Time', tableX + 172, y + 4.2);
+    colDefs.forEach(function(col) {
+        doc.text(col.label, tableX + col.x + 2, y + 4.2);
+    });
     y += 7;
 
-    // Table rows
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
 
     stops.forEach(function(stop, i) {
-        if (y > 260) { doc.addPage(); y = M; }
+        if (y > 265) { doc.addPage(); y = M; }
 
-        // Row bg: exception > failed > zebra
+        // Row bg: failed rows get highlight
         var rowBg = i % 2 === 0 ? [250, 250, 252] : [255, 255, 255];
-        if (stop.delivery_exception) rowBg = [255, 247, 237];
-        else if (stop.status === 'failed') rowBg = [254, 242, 242];
+        if (stop.status === 'failed') rowBg = [255, 240, 240];
+        else if (stop.delivery_exception) rowBg = [255, 247, 237];
         doc.setFillColor(rowBg[0], rowBg[1], rowBg[2]);
-        doc.rect(tableX, y - 3, tableW, 5.5, 'F');
+        doc.rect(tableX, y - 2.5, tableW, 6, 'F');
 
-        // Exception marker
+        // # with exception marker
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        doc.setFontSize(6.5);
+        doc.text(String(i + 1), tableX + colDefs[0].x + 2, y + 1.5);
         if (stop.delivery_exception) {
             doc.setTextColor(red[0], red[1], red[2]);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(7);
-            doc.text('!', tableX + 1, y);
+            doc.text('!', tableX + colDefs[0].x + 2, y + 1.5);
         }
-        doc.setFontSize(6.5);
 
-        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-        doc.text(String(i + 1), tableX + 4, y);
+        // Customer
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(0, 0, 0);
-        doc.text(stop.customer_name.substring(0, 16), tableX + 10, y);
-        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.text(stop.customer_name.substring(0, 22), tableX + colDefs[1].x + 2, y + 1.5);
 
-        // GPS
-        var gpsStr = '--';
-        var hasGps = stop.gps_lat && stop.gps_lng;
-        if (hasGps) {
-            gpsStr = Number(stop.gps_lat).toFixed(4) + ', ' + Number(stop.gps_lng).toFixed(4);
-        } else if (stop.gps_lat || stop.gps_lng) {
-            gpsStr = (stop.gps_lat ? Number(stop.gps_lat).toFixed(4) : '--') + ', ' + (stop.gps_lng ? Number(stop.gps_lng).toFixed(4) : '--');
-        }
-        doc.setTextColor(hasGps ? synGreen[0] : grayDark[0], hasGps ? synGreen[1] : grayDark[1], hasGps ? synGreen[2] : grayDark[2]);
+        // Status badge
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(5.5);
-        doc.text(gpsStr, tableX + 48, y + 1);
-        doc.setFontSize(6.5);
-
-        // Status with color
         if (stop.status === 'delivered') { doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]); }
         else if (stop.status === 'failed') { doc.setTextColor(red[0], red[1], red[2]); }
         else if (stop.status === 'partial') { doc.setTextColor(230, 81, 0); }
         else { doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]); }
-        doc.setFont('helvetica', 'bold');
-        doc.text((stop.status || 'pending').toUpperCase(), tableX + 80, y);
+        doc.text((stop.status || 'pending').toUpperCase(), tableX + colDefs[2].x + 2, y + 1.5);
 
         // Remark
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-        var remarkStr = stop.remark ? stop.remark.substring(0, 22) : '--';
-        if (stop.remark && stop.remark.length > 22) remarkStr += '...';
         doc.setFontSize(5.5);
-        doc.text(remarkStr, tableX + 104, y + 1);
-        doc.setFontSize(6.5);
+        var remarkStr = '--';
+        if (stop.remark) {
+            remarkStr = stop.remark.substring(0, 24);
+            if (stop.remark.length > 24) remarkStr += '...';
+        }
+        doc.text(remarkStr, tableX + colDefs[3].x + 2, y + 1.5);
 
-        // Customer response
+        // Management Action
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.5);
+        if (stop.status === 'failed') {
+            doc.setTextColor(red[0], red[1], red[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Investigate', tableX + colDefs[4].x + 2, y + 1.5);
+        } else if (stop.customer_response === 'not_received') {
+            doc.setTextColor(230, 126, 34);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Follow up', tableX + colDefs[4].x + 2, y + 1.5);
+        } else if (stop.customer_response !== 'confirmed_received') {
+            doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+            doc.text('Confirm receipt', tableX + colDefs[4].x + 2, y + 1.5);
+        } else {
+            doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
+            doc.text('Completed', tableX + colDefs[4].x + 2, y + 1.5);
+        }
+
+        // Reply & Time
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.5);
         var resp = stop.customer_response || 'no_response';
         var respLabel = resp === 'confirmed_received' ? 'Received' : resp === 'not_received' ? 'Not Recvd' : '--';
-        var respColor = resp === 'confirmed_received' ? synGreen : resp === 'not_received' ? red : grayDark;
-        doc.setTextColor(respColor[0], respColor[1], respColor[2]);
-        doc.setFont('helvetica', 'bold');
-        doc.text(respLabel, tableX + 142, y + 0.5);
+        doc.text(respLabel, tableX + colDefs[5].x + 2, y + 0.5);
+        doc.setFontSize(5);
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        doc.text(stop.delivered_at ? fTime(stop.delivered_at) : '--', tableX + colDefs[5].x + 2, y + 4);
 
-        // Time
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'normal');
-        doc.text(stop.delivered_at ? fTime(stop.delivered_at) : '--', tableX + 172, y);
-
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'normal');
-
-        y += 5.5;
+        y += 6;
     });
 
-    // --- Customer Feedback Summary ---
-    y += 8;
-    if (y > 250) { doc.addPage(); y = M; }
+    // --- Customer Feedback Summary (compact) ---
+    y += 6;
+    if (y > 265) { doc.addPage(); y = M; }
 
-    var confirmedCount = stops.filter(function(s) { return s.customer_response === 'confirmed_received'; }).length;
-    var notReceivedCount = stops.filter(function(s) { return s.customer_response === 'not_received'; }).length;
-    var noResponseCount = stops.filter(function(s) { return !s.customer_response || s.customer_response === 'no_response'; }).length;
-
-    var fbH = 22;
+    var fbH = 18;
     doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
-    doc.roundedRect(tableX, y, tableW, fbH, 3, 3, 'F');
+    doc.roundedRect(tableX, y, tableW, fbH, 4, 4, 'F');
     doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
     doc.setLineWidth(0.3);
-    doc.roundedRect(tableX, y, tableW, fbH, 3, 3, 'S');
+    doc.roundedRect(tableX, y, tableW, fbH, 4, 4, 'S');
 
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
-    doc.text('CUSTOMER FEEDBACK SUMMARY', tableX + 5, y + 6);
+    doc.text('CUSTOMER FEEDBACK SUMMARY', tableX + 6, y + 6);
 
-    var fbW = (tableW - 12) / 3;
-    var fbItemY = y + 14;
-    doc.setFontSize(7);
-
+    var fbW = (tableW - 24) / 3;
+    doc.setFontSize(6.5);
+    // Confirmed
+    doc.setFillColor(237, 248, 239);
+    doc.roundedRect(tableX + 6, y + 9, fbW, fbH - 12, 3, 3, 'F');
     doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
     doc.setFont('helvetica', 'bold');
-    doc.text(String(confirmedCount), tableX + 5, fbItemY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Confirmed', tableX + 5, fbItemY + 5);
-
+    doc.text(String(confirmedCount) + ' Confirmed', tableX + 10, y + 14);
+    // Not Received
+    doc.setFillColor(255, 241, 242);
+    doc.roundedRect(tableX + fbW + 12, y + 9, fbW, fbH - 12, 3, 3, 'F');
     doc.setTextColor(red[0], red[1], red[2]);
     doc.setFont('helvetica', 'bold');
-    doc.text(String(notReceivedCount), tableX + fbW + 8, fbItemY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Not Received', tableX + fbW + 8, fbItemY + 5);
-
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+    doc.text(String(notReceivedCount) + ' Not Received', tableX + fbW + 16, y + 14);
+    // No Response
+    doc.setFillColor(255, 247, 237);
+    doc.roundedRect(tableX + 2*fbW + 18, y + 9, fbW, fbH - 12, 3, 3, 'F');
+    doc.setTextColor(230, 126, 34);
     doc.setFont('helvetica', 'bold');
-    doc.text(String(noResponseCount), tableX + 2*fbW + 11, fbItemY);
-    doc.setFont('helvetica', 'normal');
-    doc.text('No Response', tableX + 2*fbW + 11, fbItemY + 5);
+    doc.text(String(noResponseCount) + ' No Response', tableX + 2*fbW + 22, y + 14);
 
-    y += fbH + 4;
+    y += fbH + 6;
+
+    // --- Investigation Checklist (only if failed > 0) ---
+    if (failed > 0) {
+        if (y > 250) { doc.addPage(); y = M; }
+
+        var chkH = 48;
+        doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
+        doc.roundedRect(tableX, y, tableW, chkH, 4, 4, 'F');
+        doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(tableX, y, tableW, chkH, 4, 4, 'S');
+
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('INVESTIGATION CHECKLIST', tableX + 6, y + 6);
+
+        var steps = [
+            { num: '1', title: 'Validate the claim', desc: 'Check GPS trail, SO note, customer call record, timing.' },
+            { num: '2', title: 'Confirm customer impact', desc: 'Was the stockist out of stock, closed, or inaccessible?' },
+            { num: '3', title: 'Decide recovery action', desc: 'Re-delivery, partial, route resequence, or commercial follow-up.' },
+            { num: '4', title: 'Tag root cause', desc: 'Weather, planning, vendor, customer readiness, or documentation.' }
+        ];
+
+        doc.setFontSize(5.5);
+        steps.forEach(function(step, si) {
+            var sx = tableX + 6 + (si % 2) * (tableW / 2 - 4);
+            var sy = y + 13 + Math.floor(si / 2) * 16;
+
+            // Number circle
+            doc.setFillColor(234, 244, 251);
+            doc.circle(sx + 5, sy + 2, 4, 'F');
+            doc.setTextColor(synBlue[0], synBlue[1], synBlue[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7);
+            doc.text(step.num, sx + 5, sy + 4.5, { align: 'center' });
+
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6);
+            doc.text(step.title, sx + 13, sy + 1);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+            doc.setFontSize(5);
+            doc.text(step.desc, sx + 13, sy + 7, { maxWidth: 65 });
+        });
+
+        y += chkH + 6;
+    }
 
     // --- Issues Section ---
     if (issues.length > 0) {
-        y += 8;
+        y += 2;
         if (y > 250) { doc.addPage(); y = M; }
 
-        var issueBoxH = 8 + issues.length * 5;
+        var issueBoxH = 10 + issues.length * 5;
         doc.setFillColor(255, 247, 237);
-        doc.roundedRect(tableX, y, tableW, issueBoxH, 3, 3, 'F');
+        doc.roundedRect(tableX, y, tableW, issueBoxH, 4, 4, 'F');
         doc.setDrawColor(red[0], red[1], red[2]);
         doc.setLineWidth(0.3);
-        doc.roundedRect(tableX, y, tableW, issueBoxH, 3, 3, 'S');
-
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(red[0], red[1], red[2]);
-        doc.text('ISSUES REPORTED (' + issues.length + ')', tableX + 5, y + 6);
-        y += 10;
+        doc.roundedRect(tableX, y, tableW, issueBoxH, 4, 4, 'S');
 
         doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(red[0], red[1], red[2]);
+        doc.text('ISSUES REPORTED (' + issues.length + ')', tableX + 6, y + 6);
+        y += 10;
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(6);
         issues.forEach(function(issue) {
             if (y > 275) { doc.addPage(); y = M; }
-            doc.setTextColor(0, 0, 0);
             doc.setFont('helvetica', 'bold');
             doc.text('- ' + issue.issue_type, tableX + 6, y);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-            if (issue.details) {
-                doc.text(issue.details.substring(0, 55), tableX + 45, y);
-            }
+            if (issue.details) doc.text(issue.details.substring(0, 60), tableX + 45, y);
             doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-            doc.text(fTime(issue.reported_at), tableX + 155, y);
+            doc.text(fTime(issue.reported_at), tableX + 170, y);
             y += 5;
+            doc.setTextColor(0, 0, 0);
         });
-        y += 2;
+        y += 4;
     }
 
-    // --- Route Performance Box ---
-    y += 8;
-    if (y > 240) { doc.addPage(); y = M; }
+    // --- Cost & Route Economics ---
+    y += 4;
+    if (y > 250) { doc.addPage(); y = M; }
 
-    var perfBoxH = 52;
+    var costBoxH = 46;
     doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
-    doc.roundedRect(tableX, y, tableW, perfBoxH, 3, 3, 'F');
+    doc.roundedRect(tableX, y, tableW, costBoxH, 4, 4, 'F');
     doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
     doc.setLineWidth(0.3);
-    doc.roundedRect(tableX, y, tableW, perfBoxH, 3, 3, 'S');
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('ROUTE PERFORMANCE', tableX + 5, y + 6);
-
-    var perfY = y + 12;
-    var perfCol = tableW / 3;
-
-    // Col 1 — Success Rate with progress bar
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.setFontSize(7);
-    doc.text('Success Rate', tableX + 5, perfY);
-    var successRate = stops.length > 0 ? Math.round((delivered / stops.length) * 100) : 0;
-
-    var barX = tableX + 5;
-    var barY = perfY + 3;
-    var barW = 50;
-    var barH = 5;
-    doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
-    doc.setLineWidth(0.2);
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(barX, barY, barW, barH, 1.5, 1.5, 'FD');
-    if (successRate > 0) {
-        var fillColor = successRate >= 80 ? synGreen : successRate >= 50 ? [230, 81, 0] : red;
-        doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
-        doc.roundedRect(barX, barY, Math.max(3, (successRate / 100) * barW), barH, 1.5, 1.5, 'F');
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(successRate >= 80 ? synGreen[0] : successRate >= 50 ? 230 : red[0],
-                     successRate >= 80 ? synGreen[1] : successRate >= 50 ? 81 : red[1],
-                     successRate >= 80 ? synGreen[2] : successRate >= 50 ? 0 : red[2]);
-    doc.setFontSize(8);
-    doc.text(successRate + '%', barX + barW + 3, barY + 4);
-    doc.setTextColor(0, 0, 0);
-
-    // Col 2 — Avg Time/Stop
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Avg Time / Stop', tableX + perfCol + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(9);
-    var avgTime = '--';
-    if (route.started_at && route.completed_at && delivered > 0) {
-        var totalMins = (new Date(route.completed_at) - new Date(route.started_at)) / 60000;
-        avgTime = Math.round(totalMins / delivered) + ' min';
-    }
-    doc.text(avgTime, tableX + perfCol + 5, perfY + 6);
-    doc.setFont('helvetica', 'normal');
-
-    // Col 3 — KM per Stop
-    doc.setFontSize(7);
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('KM per Stop', tableX + 2*perfCol + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(9);
-    var kmPerStop = (route.initial_km_reading && route.final_km_reading && route.driven_km && stops.length > 0) ? (route.driven_km / stops.length).toFixed(1) + ' km' : '--';
-    doc.text(kmPerStop, tableX + 2*perfCol + 5, perfY + 6);
-
-    // Row 2 — GPS & Feedback KPIs
-    perfY += 14;
-    var gpsCount = stops.filter(function(s) { return s.gps_lat && s.gps_lng; }).length;
+    doc.roundedRect(tableX, y, tableW, costBoxH, 4, 4, 'S');
 
     doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('GPS Coverage', tableX + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(gpsCount > 0 ? synGreen[0] : grayDark[0], gpsCount > 0 ? synGreen[1] : grayDark[1], gpsCount > 0 ? synGreen[2] : grayDark[2]);
-    doc.setFontSize(9);
-    doc.text(gpsCount + '/' + stops.length, tableX + 5, perfY + 5);
-    doc.setTextColor(0, 0, 0);
-
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Confirmed', tableX + perfCol + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
-    doc.setFontSize(9);
-    doc.text(String(confirmedCount), tableX + perfCol + 5, perfY + 5);
-    doc.setTextColor(0, 0, 0);
-
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Not Received', tableX + 2*perfCol + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(red[0], red[1], red[2]);
-    doc.setFontSize(9);
-    doc.text(String(notReceivedCount), tableX + 2*perfCol + 5, perfY + 5);
-    doc.setTextColor(0, 0, 0);
-
-    // Row 3 — SO / Vehicle / Vendor
-    perfY += 12;
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('SO', tableX + 5, perfY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
-    doc.text(soName, tableX + 5, perfY + 5);
+    doc.text('COST & ROUTE ECONOMICS', tableX + 6, y + 6);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Vehicle', tableX + perfCol + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text(route.vehicle_number || '--', tableX + perfCol + 5, perfY + 5);
+    var costL = tableX + 6;
+    var costR = tableX + tableW / 2 + 4;
+    var costY = y + 14;
+    var costRowH2 = 5;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
-    doc.text('Vendor', tableX + 2*perfCol + 5, perfY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text(route.vendor_name || '--', tableX + 2*perfCol + 5, perfY + 5);
-
-    // --- Cost Distribution Section ---
-    y += perfBoxH + 5;
-    if (y > 225) { doc.addPage(); y = M; }
-
-    var costBoxH = 48;
-    doc.setFillColor(grayLight[0], grayLight[1], grayLight[2]);
-    doc.roundedRect(tableX, y, tableW, costBoxH, 3, 3, 'F');
-    doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(tableX, y, tableW, costBoxH, 3, 3, 'S');
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('COST DISTRIBUTION', tableX + 5, y + 6);
-
-    var costKM = (route.driven_km || 0) * perKmCost;
-    var costExpense = Number(route.so_travelling_expense || 0);
-    var costCarrying = Number(route.carrying_cost || 0);
-    var costLoading = Number(route.loading_unloading_cost || 0);
-    var totalCost = costKM + costExpense + costCarrying + costLoading;
-    var salesVal = Number(route.sales_value || 0);
-    var costRatio = salesVal > 0 ? (totalCost / salesVal) * 100 : 0;
-
-    var costX = tableX + 5;
-    var costY = y + 13;
-    var costCol1 = 55;
-    var costRowH = 5.5;
-
-    function drawCostRow(label, value, isTotal, isHighlight) {
+    function drawCostLine(label, value, x, isTotal) {
         doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
-        doc.setFontSize(7);
+        doc.setFontSize(isTotal ? 7 : 6.5);
         doc.setTextColor(isTotal ? 0 : grayDark[0], isTotal ? 0 : grayDark[1], isTotal ? 0 : grayDark[2]);
-        doc.text(label, costX, costY);
+        doc.text(label, x, costY);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(isTotal ? 8 : 7);
-        if (isHighlight === 'green') doc.setTextColor(synGreen[0], synGreen[1], synGreen[2]);
-        else if (isHighlight === 'red') doc.setTextColor(red[0], red[1], red[2]);
-        else doc.setTextColor(0, 0, 0);
-        doc.text(value, costX + costCol1 + 38, costY, { align: 'right' });
-        costY += costRowH;
+        doc.setFontSize(isTotal ? 7.5 : 6.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text(value, x + 70, costY, { align: 'right' });
+        costY += costRowH2;
     }
 
-    drawCostRow('Driven KM (' + (route.driven_km || 0) + ') x Per KM Cost', 'BDT ' + Math.round(costKM).toLocaleString(), false, false);
-    drawCostRow('SO Travelling Expense', 'BDT ' + Math.round(costExpense).toLocaleString(), false, false);
-    drawCostRow('Carrying Cost', 'BDT ' + Math.round(costCarrying).toLocaleString(), false, false);
-    drawCostRow('Loading/Unloading Cost', 'BDT ' + Math.round(costLoading).toLocaleString(), false, false);
+    drawCostLine('SO travelling expense', 'BDT ' + Math.round(costExpense).toLocaleString(), costL);
+    drawCostLine('Carrying cost', 'BDT ' + Math.round(costCarrying).toLocaleString(), costL);
+    drawCostLine('Loading/unloading cost', 'BDT ' + Math.round(costLoading).toLocaleString(), costL);
+    drawCostLine('Driven KM x Per KM cost', 'BDT ' + Math.round(costKM).toLocaleString(), costL);
 
-    doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
-    doc.setLineWidth(0.3);
-    doc.line(costX, costY, costX + costCol1 + 40, costY);
-    costY += 2;
+    costY = y + 14;
+    drawCostLine('Route sales value', salesVal ? 'BDT ' + Math.round(salesVal).toLocaleString() : '--', costR, true);
+    drawCostLine('Total route cost', 'BDT ' + Math.round(totalCost).toLocaleString(), costR, true);
+    var costRatioColor = costRatio > 30 ? 'red' : costRatio > 15 ? 'amber' : 'green';
+    var crc = costRatioColor === 'red' ? red : costRatioColor === 'amber' ? [230, 126, 34] : synGreen;
+    doc.setTextColor(crc[0], crc[1], crc[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('Cost Ratio: ' + (costRatio > 0 ? costRatio.toFixed(1) + '%' : '--'), costR, costY + 2);
 
-    drawCostRow('Total Cost', 'BDT ' + Math.round(totalCost).toLocaleString(), true, false);
-    drawCostRow('Route Sales Value', salesVal ? 'BDT ' + Math.round(salesVal).toLocaleString() : '--', true, 'green');
-    drawCostRow('Cost Ratio', costRatio > 0 ? costRatio.toFixed(1) + '%' : '--', true, costRatio > 30 ? 'red' : 'green');
+    y += costBoxH + 6;
+
+    // --- Management Questions (if issues or failed) ---
+    if (failed > 0 || issues.length > 0) {
+        if (y > 260) { doc.addPage(); y = M; }
+
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+        doc.text('MANAGEMENT REVIEW QUESTIONS', tableX, y);
+        y += 5;
+
+        var qW = (tableW - 12) / 3;
+        var qH = 22;
+        var questions = [
+            { title: 'Planning lens', body: 'Was the flood/issue risk known before dispatch? Should the route sequence or date have changed?' },
+            { title: 'Logistics / Vendor lens', body: 'Did the vendor attempt reasonable access and capture evidence? If not, performance review is justified.' },
+            { title: 'Commercial / CS lens', body: 'Did the stockist receive proactive communication and recovery commitment? This matters more than cost ratio.' }
+        ];
+
+        questions.forEach(function(q, qi) {
+            var qx = tableX + qi * (qW + 6);
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(qx, y, qW, qH, 4, 4, 'F');
+            doc.setDrawColor(grayMid[0], grayMid[1], grayMid[2]);
+            doc.setLineWidth(0.2);
+            doc.roundedRect(qx, y, qW, qH, 4, 4, 'S');
+
+            doc.setTextColor(deepBlue[0], deepBlue[1], deepBlue[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.5);
+            doc.text(q.title, qx + 5, y + 6);
+            doc.setTextColor(grayDark[0], grayDark[1], grayDark[2]);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(5.5);
+            doc.text(q.body, qx + 5, y + 11, { maxWidth: qW - 8 });
+        });
+
+        y += qH + 6;
+    }
 
     // Page 2 footer
     doc.setFontSize(6);
